@@ -55,7 +55,7 @@ object ReceiptParser {
                 }
 
                 if (itemName.length >= 2) {
-                    items.add(BillItem(name = itemName.capitalizeWords(), price = price))
+                    items.add(BillItem(name = itemName.capitalizeWords(), price = price, category = com.example.splixter.data.ItemCategory.guessFromName(itemName)))
                 }
             }
         }
@@ -77,12 +77,14 @@ object ReceiptParser {
 
     fun getSampleBillItems(): List<BillItem> {
         return listOf(
-            BillItem(name = "Paneer Tikka Platter", price = 340.00),
-            BillItem(name = "Butter Chicken & Naan", price = 520.00),
-            BillItem(name = "Dal Makhani Large", price = 380.00),
-            BillItem(name = "Hyderabadi Chicken Biryani", price = 460.00),
-            BillItem(name = "Cold Coffee with Ice Cream", price = 180.00),
-            BillItem(name = "Gulab Jamun", price = 120.00)
+            BillItem(name = "Paneer Tikka Platter", price = 340.00, category = com.example.splixter.data.ItemCategory.FOOD),
+            BillItem(name = "Butter Chicken & Naan", price = 520.00, category = com.example.splixter.data.ItemCategory.FOOD),
+            BillItem(name = "Craft Beer Pint", price = 280.00, category = com.example.splixter.data.ItemCategory.LIQUOR),
+            BillItem(name = "Red Wine Glass", price = 450.00, category = com.example.splixter.data.ItemCategory.LIQUOR),
+            BillItem(name = "Dal Makhani Large", price = 380.00, category = com.example.splixter.data.ItemCategory.FOOD),
+            BillItem(name = "Hyderabadi Chicken Biryani", price = 460.00, category = com.example.splixter.data.ItemCategory.FOOD),
+            BillItem(name = "Cold Coffee with Ice Cream", price = 180.00, category = com.example.splixter.data.ItemCategory.FOOD),
+            BillItem(name = "Gulab Jamun", price = 120.00, category = com.example.splixter.data.ItemCategory.FOOD)
         )
     }
 }

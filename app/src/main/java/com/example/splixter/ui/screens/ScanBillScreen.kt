@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -60,6 +61,9 @@ import com.example.splixter.data.BillItem
 import com.example.splixter.data.ItemCategory
 import com.example.splixter.ui.SplitterUiState
 import com.example.splixter.ui.SplitterViewModel
+import com.example.splixter.ui.components.LiquidGlassBackground
+import com.example.splixter.ui.components.glassCardColors
+import com.example.splixter.ui.components.glassCardBorder
 import com.example.splixter.util.CommonFoodItems
 import java.util.Locale
 
@@ -95,11 +99,12 @@ fun ScanBillScreen(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-        ) {
+        LiquidGlassBackground {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+            ) {
             Box(modifier = Modifier.padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 4.dp)) {
                 com.example.splixter.ui.components.WorkflowStepHeader(currentStep = AppStep.SCAN)
             }
@@ -150,9 +155,9 @@ fun ScanBillScreen(
             // Manual Add Item Card
             Card(
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                ),
+                colors = glassCardColors(),
+                border = glassCardBorder(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -162,11 +167,14 @@ fun ScanBillScreen(
                     ) {
                         OutlinedTextField(
                             value = manualItemName,
-                            onValueChange = { manualItemName = it },
+                            onValueChange = {
+                                manualItemName = it
+                                selectedCategory = com.example.splixter.data.ItemCategory.guessFromName(it)
+                            },
                             label = { Text("Item Name") },
                             placeholder = { Text("e.g. Pizza, Burger, Coffee") },
                             singleLine = true,
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .weight(1f)
                                 .focusRequester(itemNameFocusRequester),
@@ -182,7 +190,7 @@ fun ScanBillScreen(
                             label = { Text("Price (₹)") },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .width(110.dp)
                                 .focusRequester(priceFocusRequester),
@@ -196,7 +204,7 @@ fun ScanBillScreen(
                             onClick = { onAddManualItem() },
                             modifier = Modifier
                                 .size(52.dp)
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(MaterialTheme.colorScheme.primary)
                         ) {
                             Icon(
@@ -205,6 +213,34 @@ fun ScanBillScreen(
                                 tint = MaterialTheme.colorScheme.onPrimary
                             )
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Category:",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        FoodLiquorToggle(
+                            category = selectedCategory,
+                            onToggle = {
+                                selectedCategory = if (selectedCategory == com.example.splixter.data.ItemCategory.FOOD) {
+                                    com.example.splixter.data.ItemCategory.LIQUOR
+                                } else {
+                                    com.example.splixter.data.ItemCategory.FOOD
+                                }
+                            }
+                        )
                     }
 
                     // Autocomplete Dishes Suggestion Row
@@ -220,6 +256,7 @@ fun ScanBillScreen(
                                     color = MaterialTheme.colorScheme.primaryContainer,
                                     modifier = Modifier.clickable {
                                         manualItemName = dish
+                                        selectedCategory = com.example.splixter.data.ItemCategory.guessFromName(dish)
                                         priceFocusRequester.requestFocus()
                                     }
                                 ) {
@@ -244,9 +281,9 @@ fun ScanBillScreen(
                 val totalSum = remember(uiState.items) { uiState.items.sumOf { it.price } }
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f)
-                    ),
+                    colors = glassCardColors(),
+                    border = glassCardBorder(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 12.dp)
@@ -283,9 +320,9 @@ fun ScanBillScreen(
                 ) {
                     Card(
                         shape = RoundedCornerShape(24.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                        ),
+                        colors = glassCardColors(),
+                        border = glassCardBorder(),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
@@ -337,16 +374,16 @@ fun ScanBillScreen(
                     viewModel.setStep(AppStep.ASSIGN)
                 },
                 enabled = uiState.items.isNotEmpty(),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(12.dp))
                     .background(
                         if (uiState.items.isNotEmpty()) {
                             androidx.compose.ui.graphics.Brush.horizontalGradient(
-                                colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
+                                colors = listOf(MaterialTheme.colorScheme.primary, Color(0xFF0EA5E9))
                             )
                         } else {
                             androidx.compose.ui.graphics.Brush.horizontalGradient(
@@ -374,6 +411,7 @@ fun ScanBillScreen(
     }
 }
 }
+}
 
 @Composable
 fun ScannedItemCard(
@@ -382,10 +420,9 @@ fun ScannedItemCard(
 ) {
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = glassCardColors(),
+        border = glassCardBorder(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(

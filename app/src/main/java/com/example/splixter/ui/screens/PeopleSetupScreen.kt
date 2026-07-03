@@ -22,9 +22,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -71,6 +68,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -85,6 +83,9 @@ import com.example.splixter.data.Person
 import com.example.splixter.data.SavedGroup
 import com.example.splixter.ui.SplitterUiState
 import com.example.splixter.ui.SplitterViewModel
+import com.example.splixter.ui.components.LiquidGlassBackground
+import com.example.splixter.ui.components.glassCardColors
+import com.example.splixter.ui.components.glassCardBorder
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -159,12 +160,13 @@ fun PeopleSetupScreen(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .blur(if (isAnyDialogOpen) 20.dp else 0.dp)
-        ) {
-            Column(
+        LiquidGlassBackground {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(if (isAnyDialogOpen) 20.dp else 0.dp)
+            ) {
+                Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .statusBarsPadding()
@@ -256,7 +258,7 @@ fun PeopleSetupScreen(
                         onValueChange = { nameInput = it },
                         placeholder = { Text("Enter a name...") },
                         singleLine = true,
-                        shape = RoundedCornerShape(50.dp),
+                        shape = RoundedCornerShape(12.dp),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { onAddPerson() }),
                         modifier = Modifier.weight(1f),
@@ -269,7 +271,7 @@ fun PeopleSetupScreen(
                     Box(
                         modifier = Modifier
                             .size(52.dp)
-                            .clip(CircleShape)
+                            .clip(RoundedCornerShape(12.dp))
                             .background(MaterialTheme.colorScheme.primary)
                             .clickable { onAddPerson() },
                         contentAlignment = Alignment.Center
@@ -407,11 +409,9 @@ fun PeopleSetupScreen(
                     }
                 } else {
                     Spacer(modifier = Modifier.height(8.dp))
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
+                    LazyColumn(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
@@ -420,6 +420,7 @@ fun PeopleSetupScreen(
                             PersonAvatarCard(
                                 person = person,
                                 isPayee = person.id == uiState.paidByPersonId,
+                                hasPayeeSelected = uiState.paidByPersonId != null,
                                 onRemove = { viewModel.removePerson(person.id) },
                                 onSetPayee = { viewModel.setPaidByPerson(person.id) }
                             )
@@ -439,19 +440,19 @@ fun PeopleSetupScreen(
                             viewModel.setStep(AppStep.SCAN)
                         }
                     },
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 16.dp)
                         .height(56.dp)
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
                                     MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.secondary
+                                    Color(0xFF0EA5E9)
                                 )
                             )
                         ),
@@ -479,98 +480,122 @@ fun PeopleSetupScreen(
         }
     }
 }
+}
 
 
 @Composable
 fun PersonAvatarCard(
     person: Person,
     isPayee: Boolean,
+    hasPayeeSelected: Boolean,
     onRemove: () -> Unit,
     onSetPayee: () -> Unit
 ) {
-    val cardBg = if (isPayee) Color(0xFFFFB703).copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-    val borderColor = if (isPayee) Color(0xFFFFB703) else Color(person.color).copy(alpha = 0.4f)
+    val personColor = Color(person.color)
 
     Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = cardBg),
-        border = BorderStroke(if (isPayee) 2.dp else 1.dp, borderColor),
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(0.85f)
+        shape = RoundedCornerShape(16.dp),
+        colors = glassCardColors(isPayee = isPayee),
+        border = glassCardBorder(isPayee = isPayee),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            // Delete button top right
-            IconButton(
-                onClick = onRemove,
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar circle
+            Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(28.dp)
-                    .padding(4.dp)
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(personColor.copy(alpha = 0.25f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = if (isPayee) "👑" else person.emoji, fontSize = 22.sp)
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Name + status
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = person.name,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = if (isPayee) "Paid the bill" else if (!hasPayeeSelected) "Tap ✓ to mark as payer" else " ",
+                    fontSize = 12.sp,
+                    color = if (isPayee) Color(0xFF1DB954) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Payer badge button
+            if (isPayee) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF1DB954)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Payer",
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .border(1.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                        .clickable { onSetPayee() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Mark as payer",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Remove button
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .clickable { onRemove() },
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Remove",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.size(16.dp)
                 )
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                // Emoji bubble
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(Color(person.color)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = person.emoji, fontSize = 22.sp)
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Text(
-                    text = person.name,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Crown / Payer button
-                Surface(
-                    onClick = onSetPayee,
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isPayee) Color(0xFFFFB703) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.height(24.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (isPayee) "👑 Paid" else "👑 Pay",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isPayee) Color.Black else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
             }
         }
     }
 }
+
+
 
 @Composable
 fun GroupPresetCard(
@@ -676,8 +701,10 @@ fun SaveGroupDialog(
                     label = { Text("Group Name") },
                     placeholder = { Text("e.g. Flatmates, Office Squad") },
                     singleLine = true,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
                         focusedContainerColor = MaterialTheme.colorScheme.surface,
                         unfocusedContainerColor = MaterialTheme.colorScheme.surface
                     ),

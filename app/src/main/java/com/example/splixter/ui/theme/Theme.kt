@@ -44,25 +44,26 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF5A49E0),
+    primary = Color(0xFF493EE5),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFFEEEBFF),
-    onPrimaryContainer = Color(0xFF1E1452),
-    secondary = Color(0xFF00896F),
+    primaryContainer = Color(0xFF635BFF),
+    onPrimaryContainer = Color(0xFFFEFAFF),
+    secondary = Color(0xFF5D5D6B),
     onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFE6F9F5),
-    onSecondaryContainer = Color(0xFF00382D),
-    tertiary = Color(0xFFD63031),
+    secondaryContainer = Color(0xFFE2E1F1),
+    onSecondaryContainer = Color(0xFF636371),
+    tertiary = Color(0xFF00637B),
     onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFFFEBF4),
-    onTertiaryContainer = Color(0xFF5A1035),
-    background = Color(0xFFF8F9FD),
-    onBackground = Color(0xFF0F172A),
-    surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF0F172A),
-    surfaceVariant = Color(0xFFF1F5F9),
-    onSurfaceVariant = Color(0xFF334155), // High contrast dark slate gray
-    outline = Color(0xFF94A3B8)
+    tertiaryContainer = Color(0xFF007E9B),
+    onTertiaryContainer = Color(0xFFF6FCFF),
+    background = Color(0xFFFCF8FF),
+    onBackground = Color(0xFF1C1B20),
+    surface = Color(0xFFFCF8FF),
+    onSurface = Color(0xFF1C1B20),
+    surfaceVariant = Color(0xFFE5E1E8),
+    onSurfaceVariant = Color(0xFF464555),
+    outline = Color(0xFF777587),
+    outlineVariant = Color(0xFFC7C4D8)
 )
 
 @Composable

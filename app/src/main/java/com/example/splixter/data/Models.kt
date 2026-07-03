@@ -5,7 +5,27 @@ import java.util.UUID
 
 enum class ItemCategory {
     FOOD,
-    LIQUOR
+    LIQUOR;
+
+    companion object {
+        fun guessFromName(name: String): ItemCategory {
+            val lower = name.lowercase(java.util.Locale.US).trim()
+            val liquorKeywords = listOf(
+                "beer", "lager", "ale", "stout", "cider", "draught", "pint", "corona", "budweiser",
+                "wine", "red wine", "white wine", "champagne", "prosecco", "cabernet", "merlot", "chardonnay", "shiraz", "sauvignon",
+                "whiskey", "whisky", "scotch", "bourbon", "single malt", "jack daniel", "jim beam", "glenfiddich", "jameson",
+                "vodka", "gin", "rum", "tequila", "brandy", "cognac", "liqueur", "absinthe", "smirnoff", "bacardi",
+                "cocktail", "margarita", "martini", "mojito", "daiquiri", "negroni", "mimosa", "sangria", "cosmopolitan",
+                "shot", "shots", "liquor", "alcohol", "booze", "breezer", "toddy", "old monk", "kingfisher"
+            )
+            for (keyword in liquorKeywords) {
+                if (lower.contains(keyword)) {
+                    return LIQUOR
+                }
+            }
+            return FOOD
+        }
+    }
 }
 
 @Immutable
@@ -34,7 +54,10 @@ data class TaxAndTip(
     val isTipPercentage: Boolean = false,
     val tipPercentage: Double = 0.0,
     val isDiscountPercentage: Boolean = false,
-    val discountPercentage: Double = 0.0
+    val discountPercentage: Double = 0.0,
+    val vatAmount: Double = 0.0,
+    val isVatPercentage: Boolean = false,
+    val vatPercentage: Double = 0.0
 )
 
 data class PersonBreakdown(
@@ -44,6 +67,7 @@ data class PersonBreakdown(
     val discountShare: Double = 0.0,
     val taxShare: Double,
     val tipShare: Double,
+    val vatShare: Double = 0.0,
     val grandTotal: Double
 )
 

@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.splixter.data.AppStep
 import com.example.splixter.ui.SplitterViewModel
-import com.example.splixter.ui.theme.BushiRetroDemoFontFamily
+import com.example.splixter.ui.theme.PlusJakartaSansFontFamily
 import kotlinx.coroutines.delay
 
 
@@ -129,7 +129,7 @@ fun SplashScreen(viewModel: SplitterViewModel) {
                 ) {
                     Text(
                         text = "Spli",
-                        fontFamily = BushiRetroDemoFontFamily,
+                        fontFamily = PlusJakartaSansFontFamily,
                         fontSize = 60.sp,
                         color = Color.White,
                         letterSpacing = 1.sp
@@ -137,7 +137,7 @@ fun SplashScreen(viewModel: SplitterViewModel) {
                     SlicedX(sliceProgressProvider = { sliceProgress.value }, mode = sliceMode)
                     Text(
                         text = "ter",
-                        fontFamily = BushiRetroDemoFontFamily,
+                        fontFamily = PlusJakartaSansFontFamily,
                         fontSize = 60.sp,
                         color = Color.White,
                         letterSpacing = 1.sp
@@ -228,7 +228,7 @@ private fun XPiece(txProvider: () -> Float, tyProvider: () -> Float, shape: Gene
     Box(modifier = Modifier.graphicsLayer { translationX = txProvider(); translationY = tyProvider() }) {
         Text(
             text = "x",
-            fontFamily = BushiRetroDemoFontFamily,
+            fontFamily = PlusJakartaSansFontFamily,
             fontSize = 60.sp,
             color = Color.White,
             modifier = Modifier.clip(shape)

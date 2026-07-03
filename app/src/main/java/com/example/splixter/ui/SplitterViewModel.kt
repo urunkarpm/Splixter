@@ -93,7 +93,7 @@ class SplitterViewModel : ViewModel() {
     fun saveCurrentBillToHistory() {
         val state = _uiState.value
         if (state.people.isEmpty() || state.items.isEmpty()) return
-        val totalAmount = state.items.sumOf { it.price } + state.taxAndTip.taxAmount + state.taxAndTip.tipAmount
+        val totalAmount = calculateBreakdown().sumOf { it.grandTotal }
         val recordId = state.currentBillId
         val newRecord = BillHistoryRecord(
             id = recordId,
@@ -156,8 +156,7 @@ class SplitterViewModel : ViewModel() {
         val newPerson = Person(name = name.trim(), color = newColor, emoji = newEmoji)
         updateState { state ->
             val updatedPeople = state.people + newPerson
-            val updatedPaidBy = state.paidByPersonId ?: newPerson.id
-            state.copy(people = updatedPeople, paidByPersonId = updatedPaidBy)
+            state.copy(people = updatedPeople)
         }
     }
 
@@ -168,7 +167,7 @@ class SplitterViewModel : ViewModel() {
                 item.copy(assignedPersonIds = item.assignedPersonIds - personId)
             }
             val updatedPaidBy = if (state.paidByPersonId == personId) {
-                updatedPeople.firstOrNull()?.id
+                null
             } else {
                 state.paidByPersonId
             }
@@ -189,6 +188,20 @@ class SplitterViewModel : ViewModel() {
     fun removeItem(itemId: String) {
         updateState { state ->
             state.copy(items = state.items.filterNot { it.id == itemId })
+        }
+    }
+
+    fun toggleItemCategory(itemId: String) {
+        updateState { state ->
+            val updatedItems = state.items.map { item ->
+                if (item.id == itemId) {
+                    val newCategory = if (item.category == ItemCategory.FOOD) ItemCategory.LIQUOR else ItemCategory.FOOD
+                    item.copy(category = newCategory)
+                } else {
+                    item
+                }
+            }
+            state.copy(items = updatedItems)
         }
     }
 
@@ -220,7 +233,10 @@ class SplitterViewModel : ViewModel() {
         isTipPercentage: Boolean = false,
         tipPercentage: Double = 0.0,
         isDiscountPercentage: Boolean = false,
-        discountPercentage: Double = 0.0
+        discountPercentage: Double = 0.0,
+        vatAmount: Double = 0.0,
+        isVatPercentage: Boolean = false,
+        vatPercentage: Double = 0.0
     ) {
         updateState { state ->
             state.copy(
@@ -233,7 +249,10 @@ class SplitterViewModel : ViewModel() {
                     isTipPercentage = isTipPercentage,
                     tipPercentage = tipPercentage,
                     isDiscountPercentage = isDiscountPercentage,
-                    discountPercentage = discountPercentage
+                    discountPercentage = discountPercentage,
+                    vatAmount = vatAmount,
+                    isVatPercentage = isVatPercentage,
+                    vatPercentage = vatPercentage
                 )
             )
         }
@@ -270,7 +289,7 @@ class SplitterViewModel : ViewModel() {
         updateState(immediate = true) { s ->
             s.copy(
                 people = group.members,
-                paidByPersonId = group.members.firstOrNull()?.id
+                paidByPersonId = null
             )
         }
     }
@@ -308,16 +327,16 @@ class SplitterViewModel : ViewModel() {
         val totalSubtotal = personShares.values.sumOf { list -> list.sumOf { it.second } }
         val effectiveSubtotal = if (totalSubtotal > 0) totalSubtotal else 1.0
 
-        val taxAmount = if (state.taxAndTip.isTaxPercentage) {
-            (state.taxAndTip.taxPercentage / 100.0) * totalSubtotal
-        } else {
-            state.taxAndTip.taxAmount
-        }
+        val totalFoodSubtotal = items.filter { it.category == ItemCategory.FOOD }.sumOf { it.price }
 
-        val discount = if (state.taxAndTip.isDiscountPercentage) {
-            (state.taxAndTip.discountPercentage / 100.0) * totalSubtotal
+        val taxAmount = if (totalFoodSubtotal > 0.0) {
+            if (state.taxAndTip.isTaxPercentage) {
+                (state.taxAndTip.taxPercentage / 100.0) * totalFoodSubtotal
+            } else {
+                state.taxAndTip.taxAmount
+            }
         } else {
-            state.taxAndTip.discountAmount
+            0.0
         }
 
         val tipAmount = if (state.taxAndTip.isTipPercentage) {
@@ -326,17 +345,59 @@ class SplitterViewModel : ViewModel() {
             state.taxAndTip.tipAmount
         }
 
+        val totalLiquorSubtotal = items.filter { it.category == ItemCategory.LIQUOR }.sumOf { it.price }
+
+        val totalVatAmount = if (totalLiquorSubtotal > 0.0) {
+            if (state.taxAndTip.isVatPercentage) {
+                totalLiquorSubtotal * (state.taxAndTip.vatPercentage / 100.0)
+            } else {
+                state.taxAndTip.vatAmount
+            }
+        } else {
+            0.0
+        }
+
+        val discountBase = totalSubtotal + taxAmount + totalVatAmount
+        val discount = if (state.taxAndTip.isDiscountPercentage) {
+            (state.taxAndTip.discountPercentage / 100.0) * discountBase
+        } else {
+            state.taxAndTip.discountAmount
+        }
+
+        val activePeople = people.filter { (personShares[it.id] ?: emptyList()).isNotEmpty() }
+        val activePeopleCount = activePeople.size
+
         return people.map { person ->
             val personItems = personShares[person.id] ?: emptyList()
             val personSubtotal = personItems.sumOf { it.second }
-            val proportion = if (totalSubtotal > 0) personSubtotal / effectiveSubtotal else (1.0 / people.size)
+            val personFoodSubtotal = personItems.filter { it.first.category == ItemCategory.FOOD }.sumOf { it.second }
+            val personLiquorSubtotal = personItems.filter { it.first.category == ItemCategory.LIQUOR }.sumOf { it.second }
 
-            val personDiscountShare = discount * proportion
-            val netSubtotal = personSubtotal - personDiscountShare
+            val isActive = personItems.isNotEmpty()
 
-            val personTaxShare = taxAmount * proportion
-            val personTipShare = if (people.isNotEmpty()) tipAmount / people.size else 0.0
-            val grandTotal = netSubtotal + personTaxShare + personTipShare
+            val foodProportion = if (totalFoodSubtotal > 0.0) personFoodSubtotal / totalFoodSubtotal else 0.0
+
+            val personDiscountShare = if (isActive && activePeopleCount > 0) discount / activePeopleCount else 0.0
+            val netSubtotal = if (isActive) personSubtotal - personDiscountShare else 0.0
+
+            val personTaxShare = if (isActive) taxAmount * foodProportion else 0.0
+            val personTipShare = if (isActive && activePeopleCount > 0) tipAmount / activePeopleCount else 0.0
+
+            val personVatShare = if (isActive && totalLiquorSubtotal > 0.0) {
+                if (state.taxAndTip.isVatPercentage) {
+                    personLiquorSubtotal * (state.taxAndTip.vatPercentage / 100.0)
+                } else {
+                    totalVatAmount * (personLiquorSubtotal / totalLiquorSubtotal)
+                }
+            } else {
+                0.0
+            }
+
+            val grandTotal = if (isActive) {
+                netSubtotal + personTaxShare + personTipShare + personVatShare
+            } else {
+                0.0
+            }
 
             PersonBreakdown(
                 person = person,
@@ -345,6 +406,7 @@ class SplitterViewModel : ViewModel() {
                 discountShare = personDiscountShare,
                 taxShare = personTaxShare,
                 tipShare = personTipShare,
+                vatShare = personVatShare,
                 grandTotal = grandTotal
             )
         }

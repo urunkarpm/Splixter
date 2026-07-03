@@ -8,43 +8,58 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.example.splixter.R
 
-val RoastedBrisketFontFamily = FontFamily(
-    Font(R.font.roasted_brisket, FontWeight.Normal)
-)
-
-val BushiRetroDemoFontFamily = FontFamily(
-    Font(R.font.bushi_retro_demo_regular, FontWeight.Normal)
+val PlusJakartaSansFontFamily = FontFamily(
+    Font(R.font.plus_jakarta_sans, FontWeight.Normal),
+    Font(R.font.plus_jakarta_sans, FontWeight.Medium),
+    Font(R.font.plus_jakarta_sans, FontWeight.SemiBold),
+    Font(R.font.plus_jakarta_sans, FontWeight.Bold)
 )
 
 val SplixterTypography = Typography(
     displayLarge = TextStyle(
-        fontFamily = BushiRetroDemoFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 52.sp
+        fontFamily = PlusJakartaSansFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 32.sp,
+        lineHeight = 40.sp,
+        letterSpacing = (-0.02).sp
     ),
     displayMedium = TextStyle(
-        fontFamily = BushiRetroDemoFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 44.sp
+        fontFamily = PlusJakartaSansFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 28.sp,
+        lineHeight = 36.sp
     ),
     headlineLarge = TextStyle(
-        fontFamily = BushiRetroDemoFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 32.sp
+        fontFamily = PlusJakartaSansFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
+        letterSpacing = (-0.01).sp
     ),
     headlineMedium = TextStyle(
-        fontFamily = BushiRetroDemoFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 28.sp
+        fontFamily = PlusJakartaSansFontFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 20.sp,
+        lineHeight = 28.sp
     ),
     titleLarge = TextStyle(
-        fontFamily = BushiRetroDemoFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 22.sp
+        fontFamily = PlusJakartaSansFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 16.sp,
+        lineHeight = 24.sp
     ),
-    titleMedium = TextStyle(
-        fontFamily = BushiRetroDemoFontFamily,
+    bodyLarge = TextStyle(
+        fontFamily = PlusJakartaSansFontFamily,
         fontWeight = FontWeight.Normal,
-        fontSize = 18.sp
+        fontSize = 14.sp,
+        lineHeight = 20.sp
+    ),
+    labelMedium = TextStyle(
+        fontFamily = PlusJakartaSansFontFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.02.sp
     )
 )
+

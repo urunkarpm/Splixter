@@ -11,6 +11,7 @@
 - **Shared Items**: Split shared starters, appetizers, or drinks among multiple selected participants.
 - **Smart Fallback**: Any unassigned items automatically default to an equal split among all group members.
 - **Fair Proportional Distribution**: Taxes, tips, and discounts are distributed proportionally based on each person's exact consumption share—ensuring no one pays more than their fair share.
+- **Category-Specific Tax Slicing**: Differentiates between Food and Liquor items. GST is levied strictly on food items, and VAT is levied strictly on liquor items. People are only charged GST/VAT based on their specific food/liquor consumption shares. If there are only liquor items and no food on the bill, no GST is charged.
 
 ---
 
@@ -23,6 +24,7 @@
 
 ### 🔍 3. Item Entry & Smart Suggestions
 - **Smart Dish Autocomplete**: Integrated dish dictionary featuring popular Indian food delicacies, street food, continental dishes, and beverage suggestions.
+- **Intelligent Category Guessing**: Automatically guesses whether an item is Food or Liquor in real-time as you type or tap suggestions, with an interactive override toggle.
 - **Instant Price Entry**: Fast, streamlined manual item addition designed for quick input.
 
 ---
@@ -41,6 +43,8 @@
 ---
 
 ### 🎨 6. Premium UI & Performance Optimization
+- **iOS-style Liquid Glass (Glassmorphism)**: Displays soft, colorful glowing background blobs (liquid gradients) behind frosted-glass cards with thin, glossy reflective borders.
+- **High-Contrast Segmented Toggles**: Includes glassmorphic segmented toggles with physical sliding capsules and elevated active indicators for clear visibility in both Light and Dark modes.
 - **Material 3 Design System**: Beautiful, modern aesthetic with fluid layouts and high-contrast visuals.
 - **Light & Dark Mode**: Full support for system and manual dark theme toggling with smooth transitions.
 - **Lag-Free Performance**: State changes and storage disk writes are debounced on background IO coroutines to keep typing and interactions 100% smooth.
@@ -52,7 +56,7 @@
 - **UI Framework**: Jetpack Compose (Material 3)
 - **Architecture**: MVVM with Kotlin Coroutines & StateFlow
 - **Graphics Engine**: Android Canvas API (Receipt Generation)
-- **Local Storage**: SharedPreferences with asynchronous JSON serialization
+- **Local Storage**: Asynchronous JSON serialization with SharedPreferences
 
 ---
 

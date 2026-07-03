@@ -61,6 +61,9 @@ class AppStorage(context: Context) {
         ttObj.put("tipPercentage", state.taxAndTip.tipPercentage)
         ttObj.put("isDiscountPercentage", state.taxAndTip.isDiscountPercentage)
         ttObj.put("discountPercentage", state.taxAndTip.discountPercentage)
+        ttObj.put("vatAmount", state.taxAndTip.vatAmount)
+        ttObj.put("isVatPercentage", state.taxAndTip.isVatPercentage)
+        ttObj.put("vatPercentage", state.taxAndTip.vatPercentage)
         editor.putString("tax_tip_json", ttObj.toString())
 
         editor.putString("paid_by_person_id", state.paidByPersonId)
@@ -134,11 +137,14 @@ class AppStorage(context: Context) {
                     isTipPercentage = obj.optBoolean("isTipPercentage", false),
                     tipPercentage = obj.optDouble("tipPercentage", 0.0),
                     isDiscountPercentage = obj.optBoolean("isDiscountPercentage", false),
-                    discountPercentage = obj.optDouble("discountPercentage", 0.0)
+                    discountPercentage = obj.optDouble("discountPercentage", 0.0),
+                    vatAmount = obj.optDouble("vatAmount", 0.0),
+                    isVatPercentage = obj.optBoolean("isVatPercentage", false),
+                    vatPercentage = obj.optDouble("vatPercentage", 0.0)
                 )
             }
 
-            val paidByPersonId = prefs.getString("paid_by_person_id", null) ?: people.firstOrNull()?.id
+            val paidByPersonId = prefs.getString("paid_by_person_id", null)
             val isDarkMode = prefs.getBoolean("is_dark_mode", false)
 
             return SplitterUiState(
@@ -217,6 +223,9 @@ class AppStorage(context: Context) {
             ttObj.put("tipPercentage", rec.taxAndTip.tipPercentage)
             ttObj.put("isDiscountPercentage", rec.taxAndTip.isDiscountPercentage)
             ttObj.put("discountPercentage", rec.taxAndTip.discountPercentage)
+            ttObj.put("vatAmount", rec.taxAndTip.vatAmount)
+            ttObj.put("isVatPercentage", rec.taxAndTip.isVatPercentage)
+            ttObj.put("vatPercentage", rec.taxAndTip.vatPercentage)
             obj.put("taxAndTip", ttObj)
 
             array.put(obj)
@@ -284,7 +293,10 @@ class AppStorage(context: Context) {
                     isTipPercentage = ttObj.optBoolean("isTipPercentage", false),
                     tipPercentage = ttObj.optDouble("tipPercentage", 0.0),
                     isDiscountPercentage = ttObj.optBoolean("isDiscountPercentage", false),
-                    discountPercentage = ttObj.optDouble("discountPercentage", 0.0)
+                    discountPercentage = ttObj.optDouble("discountPercentage", 0.0),
+                    vatAmount = ttObj.optDouble("vatAmount", 0.0),
+                    isVatPercentage = ttObj.optBoolean("isVatPercentage", false),
+                    vatPercentage = ttObj.optDouble("vatPercentage", 0.0)
                 )
 
                 list.add(

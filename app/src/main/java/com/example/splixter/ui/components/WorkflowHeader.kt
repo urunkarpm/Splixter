@@ -58,8 +58,8 @@ fun WorkflowStepHeader(currentStep: AppStep) {
             val bgColor by animateColorAsState(
                 targetValue = when {
                     isCurrent -> MaterialTheme.colorScheme.primary
-                    isPassed -> MaterialTheme.colorScheme.primaryContainer
-                    else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    isPassed -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                    else -> MaterialTheme.colorScheme.secondaryContainer
                 },
                 animationSpec = spring(stiffness = Spring.StiffnessLow),
                 label = "stepBg"
@@ -68,8 +68,8 @@ fun WorkflowStepHeader(currentStep: AppStep) {
             val textColor by animateColorAsState(
                 targetValue = when {
                     isCurrent -> MaterialTheme.colorScheme.onPrimary
-                    isPassed -> MaterialTheme.colorScheme.onPrimaryContainer
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    isPassed -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.onSecondaryContainer
                 },
                 label = "stepText"
             )

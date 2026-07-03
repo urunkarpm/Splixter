@@ -40,8 +40,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.scale
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +56,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,6 +66,9 @@ import com.example.splixter.data.ItemCategory
 import com.example.splixter.data.Person
 import com.example.splixter.ui.SplitterUiState
 import com.example.splixter.ui.SplitterViewModel
+import com.example.splixter.ui.components.LiquidGlassBackground
+import com.example.splixter.ui.components.glassCardColors
+import com.example.splixter.ui.components.glassCardBorder
 import java.util.Locale
 
 @Composable
@@ -72,15 +79,18 @@ fun ItemAssignmentScreen(
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     var isTaxPercentage by remember { mutableStateOf(uiState.taxAndTip.isTaxPercentage) }
     var isDiscountPercentage by remember { mutableStateOf(uiState.taxAndTip.isDiscountPercentage) }
+    var isVatPercentage by remember { mutableStateOf(uiState.taxAndTip.isVatPercentage) }
     
     var taxInput by remember { mutableStateOf(if (isTaxPercentage) (if (uiState.taxAndTip.taxPercentage == 0.0) "" else uiState.taxAndTip.taxPercentage.toString()) else (if (uiState.taxAndTip.taxAmount == 0.0) "" else uiState.taxAndTip.taxAmount.toString())) }
     var tipInput by remember { mutableStateOf(if (uiState.taxAndTip.tipAmount == 0.0) "" else uiState.taxAndTip.tipAmount.toString()) }
     var discountInput by remember { mutableStateOf(if (isDiscountPercentage) (if (uiState.taxAndTip.discountPercentage == 0.0) "" else uiState.taxAndTip.discountPercentage.toString()) else (if (uiState.taxAndTip.discountAmount == 0.0) "" else uiState.taxAndTip.discountAmount.toString())) }
+    var vatInput by remember { mutableStateOf(if (isVatPercentage) (if (uiState.taxAndTip.vatPercentage == 0.0) "" else uiState.taxAndTip.vatPercentage.toString()) else (if (uiState.taxAndTip.vatAmount == 0.0) "" else uiState.taxAndTip.vatAmount.toString())) }
 
     val updateAllValues = {
         val tax = taxInput.toDoubleOrNull() ?: 0.0
         val tip = tipInput.toDoubleOrNull() ?: 0.0
         val disc = discountInput.toDoubleOrNull() ?: 0.0
+        val vat = vatInput.toDoubleOrNull() ?: 0.0
         viewModel.updateTaxAndTip(
             taxAmount = if (isTaxPercentage) 0.0 else tax,
             tipAmount = tip,
@@ -88,7 +98,10 @@ fun ItemAssignmentScreen(
             isTaxPercentage = isTaxPercentage,
             taxPercentage = if (isTaxPercentage) tax else 0.0,
             isDiscountPercentage = isDiscountPercentage,
-            discountPercentage = if (isDiscountPercentage) disc else 0.0
+            discountPercentage = if (isDiscountPercentage) disc else 0.0,
+            vatAmount = if (isVatPercentage) 0.0 else vat,
+            isVatPercentage = isVatPercentage,
+            vatPercentage = if (isVatPercentage) vat else 0.0
         )
     }
 
@@ -96,11 +109,12 @@ fun ItemAssignmentScreen(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-        ) {
+        LiquidGlassBackground {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+            ) {
             Box(modifier = Modifier.padding(start = 20.dp, top = 12.dp, end = 20.dp, bottom = 4.dp)) {
                 com.example.splixter.ui.components.WorkflowStepHeader(currentStep = AppStep.ASSIGN)
             }
@@ -150,9 +164,9 @@ fun ItemAssignmentScreen(
             // Tax, Tip & Discounts Card
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                ),
+                colors = glassCardColors(),
+                border = glassCardBorder(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
@@ -180,8 +194,12 @@ fun ItemAssignmentScreen(
                                 label = { Text(if (isTaxPercentage) "Tax (%)" else "Tax (₹)") },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                shape = RoundedCornerShape(14.dp),
-                                modifier = Modifier.fillMaxWidth()
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                                )
                             )
                         }
 
@@ -195,8 +213,12 @@ fun ItemAssignmentScreen(
                                 label = { Text("Tip (₹)") },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                shape = RoundedCornerShape(14.dp),
-                                modifier = Modifier.fillMaxWidth()
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                                )
                             )
                         }
                     }
@@ -226,12 +248,42 @@ fun ItemAssignmentScreen(
                                 label = { Text(if (isDiscountPercentage) "Discount (%)" else "Discount (₹)") },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                shape = RoundedCornerShape(14.dp),
-                                modifier = Modifier.fillMaxWidth()
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                                )
                             )
                         }
                         
-                        Spacer(modifier = Modifier.weight(1f))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Liquor VAT", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                TypeToggle(isPercentage = isVatPercentage, onToggleChange = { isVatPercentage = it; updateAllValues() })
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            OutlinedTextField(
+                                value = vatInput,
+                                onValueChange = {
+                                    vatInput = it
+                                    updateAllValues()
+                                },
+                                label = { Text(if (isVatPercentage) "VAT (%)" else "VAT (₹)") },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -253,7 +305,8 @@ fun ItemAssignmentScreen(
                     AssignItemCard(
                         item = item,
                         people = uiState.people,
-                        onToggleAssign = onToggleItem
+                        onToggleAssign = onToggleItem,
+                        onToggleCategory = { itemId -> viewModel.toggleItemCategory(itemId) }
                     )
                 }
             }
@@ -266,15 +319,15 @@ fun ItemAssignmentScreen(
                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                     viewModel.setStep(AppStep.RECEIPT)
                 },
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(12.dp))
                     .background(
                         androidx.compose.ui.graphics.Brush.horizontalGradient(
-                            colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
+                            colors = listOf(MaterialTheme.colorScheme.primary, Color(0xFF0EA5E9))
                         )
                     ),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
@@ -293,6 +346,7 @@ fun ItemAssignmentScreen(
                     Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color.White)
                 }
             }
+            }
         }
     }
 }
@@ -303,14 +357,14 @@ fun ItemAssignmentScreen(
 fun AssignItemCard(
     item: BillItem,
     people: List<Person>,
-    onToggleAssign: (String, String) -> Unit
+    onToggleAssign: (String, String) -> Unit,
+    onToggleCategory: (String) -> Unit
 ) {
     Card(
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = glassCardColors(),
+        border = glassCardBorder(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(
@@ -325,15 +379,18 @@ fun AssignItemCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Text(
-                        text = if (item.category == ItemCategory.FOOD) "🍕" else "🍺",
-                        fontSize = 16.sp
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
                         text = item.name,
                         fontWeight = FontWeight.Bold,
                         fontSize = 17.sp,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    FoodLiquorToggle(
+                        category = item.category,
+                        onToggle = { onToggleCategory(item.id) }
                     )
                 }
                 Text(
@@ -400,19 +457,26 @@ fun TypeToggle(
     isPercentage: Boolean,
     onToggleChange: (Boolean) -> Unit
 ) {
+    val isDark = MaterialTheme.colorScheme.background.red < 0.5f
+    val outerBg = if (isDark) Color.Black.copy(alpha = 0.35f) else Color(0xFFE2E8F0)
+    val outerBorderColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color(0xFFCBD5E1).copy(alpha = 0.6f)
+    val activeBg = if (isDark) Color.White.copy(alpha = 0.25f) else Color.White
+
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(50.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f), RoundedCornerShape(50.dp))
+            .background(outerBg)
+            .border(1.dp, outerBorderColor, RoundedCornerShape(50.dp))
             .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
             shape = RoundedCornerShape(50.dp),
-            color = if (!isPercentage) MaterialTheme.colorScheme.primary else Color.Transparent,
-            shadowElevation = if (!isPercentage) 3.dp else 0.dp,
-            modifier = Modifier.clip(RoundedCornerShape(50.dp)).clickable { onToggleChange(false) }
+            color = if (!isPercentage) activeBg else Color.Transparent,
+            shadowElevation = if (!isPercentage && !isDark) 3.dp else 0.dp,
+            modifier = Modifier
+                .clip(RoundedCornerShape(50.dp))
+                .clickable { onToggleChange(false) }
         ) {
             Box(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
@@ -420,7 +484,11 @@ fun TypeToggle(
             ) {
                 Text(
                     "₹",
-                    color = if (!isPercentage) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (!isPercentage) {
+                        if (isDark) Color.White else MaterialTheme.colorScheme.primary
+                    } else {
+                        if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF64748B)
+                    },
                     fontSize = 14.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
@@ -428,9 +496,11 @@ fun TypeToggle(
         }
         Surface(
             shape = RoundedCornerShape(50.dp),
-            color = if (isPercentage) MaterialTheme.colorScheme.primary else Color.Transparent,
-            shadowElevation = if (isPercentage) 3.dp else 0.dp,
-            modifier = Modifier.clip(RoundedCornerShape(50.dp)).clickable { onToggleChange(true) }
+            color = if (isPercentage) activeBg else Color.Transparent,
+            shadowElevation = if (isPercentage && !isDark) 3.dp else 0.dp,
+            modifier = Modifier
+                .clip(RoundedCornerShape(50.dp))
+                .clickable { onToggleChange(true) }
         ) {
             Box(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
@@ -438,10 +508,63 @@ fun TypeToggle(
             ) {
                 Text(
                     "%",
-                    color = if (isPercentage) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (isPercentage) {
+                        if (isDark) Color.White else MaterialTheme.colorScheme.primary
+                    } else {
+                        if (isDark) Color.White.copy(alpha = 0.6f) else Color(0xFF64748B)
+                    },
                     fontSize = 14.sp,
                     fontWeight = FontWeight.ExtraBold
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun FoodLiquorToggle(
+    category: ItemCategory,
+    onToggle: () -> Unit
+) {
+    val isLiquor = category == ItemCategory.LIQUOR
+    val isDark = MaterialTheme.colorScheme.background.red < 0.5f
+    val outerBg = if (isDark) Color.Black.copy(alpha = 0.35f) else Color(0xFFE2E8F0)
+    val outerBorderColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color(0xFFCBD5E1).copy(alpha = 0.6f)
+    val activeBg = if (isDark) Color.White.copy(alpha = 0.25f) else Color.White
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50.dp))
+            .background(outerBg)
+            .border(1.dp, outerBorderColor, RoundedCornerShape(50.dp))
+            .clickable { onToggle() }
+            .padding(2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            shape = RoundedCornerShape(50.dp),
+            color = if (!isLiquor) activeBg else Color.Transparent,
+            shadowElevation = if (!isLiquor && !isDark) 2.dp else 0.dp,
+            modifier = Modifier.clip(RoundedCornerShape(50.dp))
+        ) {
+            Box(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("🍕", fontSize = 12.sp)
+            }
+        }
+        Surface(
+            shape = RoundedCornerShape(50.dp),
+            color = if (isLiquor) activeBg else Color.Transparent,
+            shadowElevation = if (isLiquor && !isDark) 2.dp else 0.dp,
+            modifier = Modifier.clip(RoundedCornerShape(50.dp))
+        ) {
+            Box(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("🍺", fontSize = 12.sp)
             }
         }
     }
