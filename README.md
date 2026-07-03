@@ -1,5 +1,9 @@
 # 🧾 Splixter — Smart & Fair Bill Splitting App
 
+<p align="center">
+  <img src="axe.svg" width="120" height="120" alt="Splixter Icon">
+</p>
+
 **Splixter** is a modern, feature-rich Android app built with Kotlin and Jetpack Compose designed to make group bill splitting effortless, accurate, and visually delightful. Whether you're dining out with friends, sharing apartment expenses, or organizing a group trip, Splixter calculates exact individual shares with proportional tax, tip, and discount distribution.
 
 ---
