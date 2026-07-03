@@ -86,6 +86,7 @@ fun ScanBillScreen(
     val onAddManualItem = {
         val price = manualItemPrice.toDoubleOrNull()
         if (manualItemName.isNotBlank() && price != null && price > 0.0) {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
             viewModel.addItem(manualItemName, price, selectedCategory)
             manualItemName = ""
             manualItemPrice = ""
@@ -255,6 +256,7 @@ fun ScanBillScreen(
                                     shape = RoundedCornerShape(12.dp),
                                     color = MaterialTheme.colorScheme.primaryContainer,
                                     modifier = Modifier.clickable {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                                         manualItemName = dish
                                         selectedCategory = com.example.splixter.data.ItemCategory.guessFromName(dish)
                                         priceFocusRequester.requestFocus()
@@ -418,6 +420,7 @@ fun ScannedItemCard(
     item: BillItem,
     onDelete: () -> Unit
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     Card(
         shape = RoundedCornerShape(16.dp),
         colors = glassCardColors(),
@@ -448,7 +451,10 @@ fun ScannedItemCard(
             )
             Spacer(modifier = Modifier.width(12.dp))
             IconButton(
-                onClick = onDelete,
+                onClick = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    onDelete()
+                },
                 modifier = Modifier.size(28.dp)
             ) {
                 Icon(

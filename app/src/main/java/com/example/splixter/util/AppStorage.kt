@@ -132,14 +132,14 @@ class AppStorage(context: Context) {
                     taxAmount = if (storedTax == 120.0) 0.0 else storedTax,
                     tipAmount = if (storedTip == 50.0) 0.0 else storedTip,
                     discountAmount = obj.optDouble("discountAmount", 0.0),
-                    isTaxPercentage = obj.optBoolean("isTaxPercentage", false),
+                    isTaxPercentage = obj.optBoolean("isTaxPercentage", true),
                     taxPercentage = obj.optDouble("taxPercentage", 0.0),
                     isTipPercentage = obj.optBoolean("isTipPercentage", false),
                     tipPercentage = obj.optDouble("tipPercentage", 0.0),
                     isDiscountPercentage = obj.optBoolean("isDiscountPercentage", false),
                     discountPercentage = obj.optDouble("discountPercentage", 0.0),
                     vatAmount = obj.optDouble("vatAmount", 0.0),
-                    isVatPercentage = obj.optBoolean("isVatPercentage", false),
+                    isVatPercentage = obj.optBoolean("isVatPercentage", true),
                     vatPercentage = obj.optDouble("vatPercentage", 0.0)
                 )
             }

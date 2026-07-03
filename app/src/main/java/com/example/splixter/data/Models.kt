@@ -49,14 +49,14 @@ data class TaxAndTip(
     val taxAmount: Double = 0.0,
     val tipAmount: Double = 0.0,
     val discountAmount: Double = 0.0,
-    val isTaxPercentage: Boolean = false,
+    val isTaxPercentage: Boolean = true,
     val taxPercentage: Double = 0.0,
     val isTipPercentage: Boolean = false,
     val tipPercentage: Double = 0.0,
     val isDiscountPercentage: Boolean = false,
     val discountPercentage: Double = 0.0,
     val vatAmount: Double = 0.0,
-    val isVatPercentage: Boolean = false,
+    val isVatPercentage: Boolean = true,
     val vatPercentage: Double = 0.0
 )
 

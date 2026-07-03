@@ -427,13 +427,17 @@ private fun PersonAssignChip(
     isAssigned: Boolean,
     onClick: () -> Unit
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val personColor = remember(person.color) { Color(person.color) }
     val backgroundColor = if (isAssigned) personColor else personColor.copy(alpha = 0.12f)
     val borderColor = if (isAssigned) personColor else personColor.copy(alpha = 0.3f)
     val textColor = if (isAssigned) Color.White else MaterialTheme.colorScheme.onSurface
 
     Surface(
-        onClick = onClick,
+        onClick = {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+            onClick()
+        },
         shape = RoundedCornerShape(14.dp),
         color = backgroundColor,
         border = BorderStroke(1.5.dp, borderColor)
@@ -461,6 +465,7 @@ fun TypeToggle(
     val outerBg = if (isDark) Color.Black.copy(alpha = 0.35f) else Color(0xFFE2E8F0)
     val outerBorderColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color(0xFFCBD5E1).copy(alpha = 0.6f)
     val activeBg = if (isDark) Color.White.copy(alpha = 0.25f) else Color.White
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     Row(
         modifier = Modifier
@@ -476,7 +481,10 @@ fun TypeToggle(
             shadowElevation = if (!isPercentage && !isDark) 3.dp else 0.dp,
             modifier = Modifier
                 .clip(RoundedCornerShape(50.dp))
-                .clickable { onToggleChange(false) }
+                .clickable {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    onToggleChange(false)
+                }
         ) {
             Box(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
@@ -500,7 +508,10 @@ fun TypeToggle(
             shadowElevation = if (isPercentage && !isDark) 3.dp else 0.dp,
             modifier = Modifier
                 .clip(RoundedCornerShape(50.dp))
-                .clickable { onToggleChange(true) }
+                .clickable {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    onToggleChange(true)
+                }
         ) {
             Box(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
@@ -532,12 +543,17 @@ fun FoodLiquorToggle(
     val outerBorderColor = if (isDark) Color.White.copy(alpha = 0.15f) else Color(0xFFCBD5E1).copy(alpha = 0.6f)
     val activeBg = if (isDark) Color.White.copy(alpha = 0.25f) else Color.White
 
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(50.dp))
             .background(outerBg)
             .border(1.dp, outerBorderColor, RoundedCornerShape(50.dp))
-            .clickable { onToggle() }
+            .clickable {
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                onToggle()
+            }
             .padding(2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

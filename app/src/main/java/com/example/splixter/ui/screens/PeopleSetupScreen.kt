@@ -117,6 +117,7 @@ fun PeopleSetupScreen(
 
     val onAddPerson = {
         if (nameInput.isNotBlank()) {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
             viewModel.addPerson(nameInput.trim())
             nameInput = ""
         }
@@ -294,7 +295,10 @@ fun PeopleSetupScreen(
                     ) {
                         items(quickAddNames) { name ->
                             SuggestionChip(
-                                onClick = { viewModel.addPerson(name) },
+                                onClick = {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    viewModel.addPerson(name)
+                                },
                                 label = { Text(name, fontSize = 13.sp) }
                             )
                         }
@@ -337,8 +341,14 @@ fun PeopleSetupScreen(
                             items(uiState.savedGroups) { group ->
                                 GroupPresetCard(
                                     group = group,
-                                    onClick = { viewModel.loadSavedGroup(group.id) },
-                                    onDelete = { viewModel.deleteSavedGroup(group.id) }
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        viewModel.loadSavedGroup(group.id)
+                                    },
+                                    onDelete = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        viewModel.deleteSavedGroup(group.id)
+                                    }
                                 )
                             }
                         }
@@ -491,6 +501,7 @@ fun PersonAvatarCard(
     onRemove: () -> Unit,
     onSetPayee: () -> Unit
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val personColor = Color(person.color)
 
     Card(
@@ -562,7 +573,10 @@ fun PersonAvatarCard(
                         .size(36.dp)
                         .clip(CircleShape)
                         .border(1.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                        .clickable { onSetPayee() },
+                        .clickable {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            onSetPayee()
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -581,7 +595,10 @@ fun PersonAvatarCard(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .clickable { onRemove() },
+                    .clickable {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onRemove()
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
