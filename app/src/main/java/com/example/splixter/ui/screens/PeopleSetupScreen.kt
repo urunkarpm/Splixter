@@ -41,6 +41,9 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -66,9 +69,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -86,6 +93,7 @@ import com.example.splixter.ui.SplitterViewModel
 import com.example.splixter.ui.components.LiquidGlassBackground
 import com.example.splixter.ui.components.glassCardColors
 import com.example.splixter.ui.components.glassCardBorder
+import com.example.splixter.ui.components.bounceClick
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -98,6 +106,28 @@ fun PeopleSetupScreen(
     val context = LocalContext.current
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     var nameInput by remember { mutableStateOf("") }
+    
+    val contactPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.PickContact()
+    ) { uri ->
+        uri?.let {
+            val details = getContactDetails(context, it)
+            if (details != null) {
+                val (name, phone) = details
+                viewModel.addPerson(name, phone)
+            }
+        }
+    }
+
+    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            contactPickerLauncher.launch(null)
+        } else {
+            Toast.makeText(context, "Permission denied to read contacts.", Toast.LENGTH_SHORT).show()
+        }
+    }
     var showHistoryDialog by remember { mutableStateOf(false) }
     var showInsightsDialog by remember { mutableStateOf(false) }
     var showSaveGroupDialog by remember { mutableStateOf(false) }
@@ -195,7 +225,8 @@ fun PeopleSetupScreen(
                         Text(
                             text = "Add everyone joining the bill",
                             fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
                         )
                     }
                     Box {
@@ -247,42 +278,114 @@ fun PeopleSetupScreen(
                     }
                 }
 
-                // Name input bar
-                Row(
+                // Name input bar - Redesigned as a unified Glassmorphic capsule
+                Card(
+                    shape = RoundedCornerShape(28.dp),
+                    colors = glassCardColors(isPayee = false),
+                    border = glassCardBorder(isPayee = false),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 20.dp)
                 ) {
-                    OutlinedTextField(
-                        value = nameInput,
-                        onValueChange = { nameInput = it },
-                        placeholder = { Text("Enter a name...") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { onAddPerson() }),
-                        modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Box(
+                    Row(
                         modifier = Modifier
-                            .size(52.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.primary)
-                            .clickable { onAddPerson() },
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add person",
-                            tint = Color.White,
-                            modifier = Modifier.size(26.dp)
+                            imageVector = Icons.Default.PersonAdd,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                            modifier = Modifier.size(22.dp)
                         )
+                        OutlinedTextField(
+                            value = nameInput,
+                            onValueChange = { nameInput = it },
+                            placeholder = { Text("Enter a name...", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { onAddPerson() }),
+                            modifier = Modifier.weight(1f),
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                cursorColor = MaterialTheme.colorScheme.primary
+                            )
+                        )
+                        
+                        // Contacts picker button
+                        IconButton(
+                            onClick = {
+                                val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                                    context,
+                                    android.Manifest.permission.READ_CONTACTS
+                                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                
+                                if (hasPermission) {
+                                    contactPickerLauncher.launch(null)
+                                } else {
+                                    permissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
+                                }
+                            },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Contacts,
+                                contentDescription = "Pick from contacts",
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.width(4.dp))
+                        
+                        val isInputBlank = nameInput.isBlank()
+                        val scale by androidx.compose.animation.core.animateFloatAsState(
+                            targetValue = if (isInputBlank) 0.85f else 1f,
+                            label = "addButtonScale"
+                        )
+                        val buttonColor = if (isInputBlank) {
+                            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        }
+                        
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .scale(scale)
+                                .clip(CircleShape)
+                                .background(
+                                    if (isInputBlank) {
+                                        Brush.linearGradient(listOf(buttonColor, buttonColor))
+                                    } else {
+                                        Brush.horizontalGradient(
+                                            colors = listOf(
+                                                MaterialTheme.colorScheme.primary,
+                                                Color(0xFF0EA5E9)
+                                            )
+                                        )
+                                    }
+                                )
+                                .clickable(enabled = !isInputBlank) { onAddPerson() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add person",
+                                tint = if (isInputBlank) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f) else Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
                 }
 
@@ -294,13 +397,38 @@ fun PeopleSetupScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(quickAddNames) { name ->
-                            SuggestionChip(
-                                onClick = {
-                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                    viewModel.addPerson(name)
-                                },
-                                label = { Text(name, fontSize = 13.sp) }
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.45f))
+                                    .border(
+                                        width = 1.dp,
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .clickable {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        viewModel.addPerson(name)
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = name,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -316,9 +444,9 @@ fun PeopleSetupScreen(
                     ) {
                         Text(
                             text = "Saved Groups",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f)
                         )
                         if (uiState.people.isNotEmpty()) {
@@ -366,7 +494,7 @@ fun PeopleSetupScreen(
                     Text(
                         text = if (uiState.people.isEmpty()) "Members" else "Members (${uiState.people.size})",
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
                     )
@@ -385,7 +513,8 @@ fun PeopleSetupScreen(
                     Text(
                         text = "Tap 👑 on a card to mark who paid",
                         fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                     )
                 }
@@ -395,26 +524,64 @@ fun PeopleSetupScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f),
+                            .weight(1f)
+                            .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("👥", fontSize = 56.sp)
-                            Spacer(Modifier.height(16.dp))
-                            Text(
-                                text = "No one added yet",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                text = "Type a name above or load a saved group",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(horizontal = 32.dp)
-                            )
+                        val outlineColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        Card(
+                            shape = RoundedCornerShape(24.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.45f)
+                            ),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(220.dp)
+                                .drawBehind {
+                                    val stroke = Stroke(
+                                        width = 1.5.dp.toPx(),
+                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f)
+                                    )
+                                    drawRoundRect(
+                                        color = outlineColor,
+                                        style = stroke,
+                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(24.dp.toPx())
+                                    )
+                                }
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(20.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(60.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("👥", fontSize = 32.sp)
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Your split group is empty",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Add participants by entering a name above\nor load a saved group preset",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
                     }
                 } else {
@@ -441,6 +608,7 @@ fun PeopleSetupScreen(
 
             // Sticky CTA
             if (uiState.people.isNotEmpty()) {
+                val continueBtnInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
                 Button(
                     onClick = {
                         haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
@@ -452,12 +620,14 @@ fun PeopleSetupScreen(
                     },
                     shape = RoundedCornerShape(12.dp),
                     contentPadding = PaddingValues(),
+                    interactionSource = continueBtnInteractionSource,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 16.dp)
                         .height(56.dp)
                         .clip(RoundedCornerShape(12.dp))
+                        .bounceClick(continueBtnInteractionSource)
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
@@ -504,10 +674,24 @@ fun PersonAvatarCard(
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val personColor = Color(person.color)
 
+    val activeBorder = if (isPayee) {
+        BorderStroke(2.dp, Color(0xFF1DB954).copy(alpha = 0.8f))
+    } else {
+        BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+    }
+    
+    val activeColors = CardDefaults.cardColors(
+        containerColor = if (isPayee) {
+            Color(0xFF1DB954).copy(alpha = 0.08f).compositeOver(MaterialTheme.colorScheme.surface.copy(alpha = 0.65f))
+        } else {
+            MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)
+        }
+    )
+
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = glassCardColors(isPayee = isPayee),
-        border = glassCardBorder(isPayee = isPayee),
+        colors = activeColors,
+        border = activeBorder,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -517,75 +701,114 @@ fun PersonAvatarCard(
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar circle
+            // Avatar circle with border and crown overlay
             Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(personColor.copy(alpha = 0.25f)),
-                contentAlignment = Alignment.Center
+                modifier = Modifier.size(48.dp),
+                contentAlignment = Alignment.CenterStart
             ) {
-                Text(text = if (isPayee) "👑" else person.emoji, fontSize = 22.sp)
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(personColor.copy(alpha = 0.2f))
+                        .border(1.5.dp, personColor, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = person.name.take(1).uppercase(),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = personColor
+                    )
+                }
+                if (isPayee) {
+                    Text(
+                        text = "👑",
+                        fontSize = 14.sp,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 2.dp, y = (-2).dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
 
             // Name + status
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = person.name,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = if (isPayee) "Paid the bill" else if (!hasPayeeSelected) "Tap ✓ to mark as payer" else " ",
-                    fontSize = 12.sp,
-                    color = if (isPayee) Color(0xFF1DB954) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                    fontWeight = FontWeight.Medium
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = person.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (person.phoneNumber != null) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "📞",
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                if (isPayee) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF1DB954).copy(alpha = 0.15f))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "👑 Payer",
+                                fontSize = 11.sp,
+                                color = Color(0xFF1DB954),
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+                    }
+                } else {
+                    Text(
+                        text = if (!hasPayeeSelected) "Tap check to mark as payer" else "Participant",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Payer badge button
-            if (isPayee) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF1DB954)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Payer",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
+            // Payer selection toggle button on the right
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isPayee) Color(0xFF1DB954)
+                        else MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
                     )
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .border(1.5.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                        .clickable {
-                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            onSetPayee()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Mark as payer",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                        modifier = Modifier.size(18.dp)
+                    .border(
+                        width = if (isPayee) 0.dp else 1.5.dp,
+                        color = if (isPayee) Color.Transparent else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                        shape = CircleShape
                     )
-                }
+                    .clickable {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onSetPayee()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = if (isPayee) "Payer" else "Mark as payer",
+                    tint = if (isPayee) Color.White else MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                    modifier = Modifier.size(18.dp)
+                )
             }
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -620,33 +843,108 @@ fun GroupPresetCard(
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f))
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+        ),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        modifier = Modifier
+            .width(170.dp)
+            .clickable { onClick() }
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(12.dp)
         ) {
-            Text(text = "📁", fontSize = 14.sp)
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "${group.name} (${group.members.size})",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Delete Group",
-                tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f),
-                modifier = Modifier
-                    .size(14.dp)
-                    .clickable { onDelete() }
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = "📁", fontSize = 14.sp)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = group.name,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.width(100.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .clickable {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            onDelete()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Delete Group",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(12.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Stack of overlapping avatar emojis
+                Box(
+                    modifier = Modifier.height(24.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    val displayMembers = group.members.take(4)
+                    displayMembers.forEachIndexed { index, person ->
+                        Box(
+                            modifier = Modifier
+                                .offset(x = (index * 14).dp)
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .background(Color(person.color).copy(alpha = 0.35f))
+                                .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = person.name.take(1).uppercase(),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(person.color)
+                            )
+                        }
+                    }
+                }
+
+                // Count tag
+                Text(
+                    text = "${group.members.size} ppl",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
         }
     }
 }
@@ -994,7 +1292,7 @@ fun HistoryDialog(
                                         SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()).format(Date(rec.timestamp))
                                     }
                                     val paidPerson = rec.people.find { it.id == rec.paidByPersonId }
-                                    val paidName = paidPerson?.let { "${it.emoji} ${it.name}" } ?: "N/A"
+                                    val paidName = paidPerson?.name ?: "N/A"
 
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -1059,4 +1357,45 @@ fun HistoryDialog(
             }
         }
     }
+}
+
+fun getContactDetails(context: android.content.Context, contactUri: android.net.Uri): Pair<String, String?>? {
+    var name: String? = null
+    var phoneNumber: String? = null
+    val contentResolver = context.contentResolver
+    
+    val cursor = contentResolver.query(contactUri, null, null, null, null)
+    cursor?.use { c ->
+        if (c.moveToFirst()) {
+            val idIndex = c.getColumnIndex(android.provider.ContactsContract.Contacts._ID)
+            val nameIndex = c.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME)
+            
+            if (idIndex >= 0 && nameIndex >= 0) {
+                val contactId = c.getString(idIndex)
+                name = c.getString(nameIndex)
+                
+                val hasPhoneIndex = c.getColumnIndex(android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER)
+                val hasPhone = if (hasPhoneIndex >= 0) c.getString(hasPhoneIndex) else "0"
+                
+                if (hasPhone == "1") {
+                    val phoneCursor = contentResolver.query(
+                        android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                        null,
+                        android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+                        arrayOf(contactId),
+                        null
+                    )
+                    phoneCursor?.use { pc ->
+                        if (pc.moveToFirst()) {
+                            val numberIndex = pc.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+                            if (numberIndex >= 0) {
+                                phoneNumber = pc.getString(numberIndex)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return if (name != null) Pair(name, phoneNumber) else null
 }

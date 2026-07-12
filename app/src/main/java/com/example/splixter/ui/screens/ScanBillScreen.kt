@@ -1,5 +1,7 @@
 package com.example.splixter.ui.screens
 
+import com.example.splixter.ui.components.bounceClick
+
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -370,6 +372,7 @@ fun ScanBillScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Continue Button
+            val scanContinueBtnInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             Button(
                 onClick = {
                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
@@ -378,10 +381,12 @@ fun ScanBillScreen(
                 enabled = uiState.items.isNotEmpty(),
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(),
+                interactionSource = scanContinueBtnInteractionSource,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
                     .clip(RoundedCornerShape(12.dp))
+                    .bounceClick(scanContinueBtnInteractionSource)
                     .background(
                         if (uiState.items.isNotEmpty()) {
                             androidx.compose.ui.graphics.Brush.horizontalGradient(
@@ -393,7 +398,7 @@ fun ScanBillScreen(
                             )
                         }
                     ),
-                colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Transparent)
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

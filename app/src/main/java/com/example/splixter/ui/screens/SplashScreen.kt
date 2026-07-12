@@ -1,5 +1,7 @@
 package com.example.splixter.ui.screens
 
+import com.example.splixter.ui.components.bounceClick
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -53,7 +55,7 @@ import kotlinx.coroutines.delay
 
 
 @Composable
-fun SplashScreen(viewModel: SplitterViewModel) {
+fun SplashScreen(viewModel: SplitterViewModel, modifier: Modifier = Modifier) {
     val infiniteTransition = rememberInfiniteTransition(label = "heroFloat")
     val float1 by infiniteTransition.animateFloat(
         initialValue = -22f, targetValue = 22f,
@@ -90,7 +92,7 @@ fun SplashScreen(viewModel: SplitterViewModel) {
     }
 
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
@@ -156,15 +158,18 @@ fun SplashScreen(viewModel: SplitterViewModel) {
                 )
             }
 
+            val startBtnInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             Button(
                 onClick = { viewModel.setStep(AppStep.PEOPLE) },
                 shape = RoundedCornerShape(24.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                 contentPadding = PaddingValues(),
+                interactionSource = startBtnInteractionSource,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(60.dp)
                     .clip(RoundedCornerShape(24.dp))
+                    .bounceClick(startBtnInteractionSource)
                     .background(Brush.horizontalGradient(colors = listOf(Color(0xFF6C5CE7), Color(0xFF00B894))))
             ) {
                 Row(

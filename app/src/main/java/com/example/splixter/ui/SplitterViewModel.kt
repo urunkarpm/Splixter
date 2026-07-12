@@ -140,7 +140,7 @@ class SplitterViewModel : ViewModel() {
         updateState { it.copy(paidByPersonId = personId) }
     }
 
-    fun addPerson(name: String) {
+    fun addPerson(name: String, phoneNumber: String? = null) {
         if (name.isBlank()) return
         val colors = listOf(
             0xFF6750A4, 0xFF006A60, 0xFF984061, 0xFFB58300, 
@@ -153,7 +153,8 @@ class SplitterViewModel : ViewModel() {
         )
         val newColor = colors[(_uiState.value.people.size) % colors.size]
         val newEmoji = faceEmojis.random()
-        val newPerson = Person(name = name.trim(), color = newColor, emoji = newEmoji)
+        val cleanedPhone = phoneNumber?.replace("\\s|-".toRegex(), "")
+        val newPerson = Person(name = name.trim(), color = newColor, emoji = newEmoji, phoneNumber = cleanedPhone)
         updateState { state ->
             val updatedPeople = state.people + newPerson
             state.copy(people = updatedPeople)
@@ -377,11 +378,12 @@ class SplitterViewModel : ViewModel() {
 
             val foodProportion = if (totalFoodSubtotal > 0.0) personFoodSubtotal / totalFoodSubtotal else 0.0
 
-            val personDiscountShare = if (isActive && activePeopleCount > 0) discount / activePeopleCount else 0.0
+            val subtotalProportion = if (totalSubtotal > 0.0) personSubtotal / totalSubtotal else 0.0
+            val personDiscountShare = if (isActive) discount * subtotalProportion else 0.0
             val netSubtotal = if (isActive) personSubtotal - personDiscountShare else 0.0
 
             val personTaxShare = if (isActive) taxAmount * foodProportion else 0.0
-            val personTipShare = if (isActive && activePeopleCount > 0) tipAmount / activePeopleCount else 0.0
+            val personTipShare = if (isActive) tipAmount * subtotalProportion else 0.0
 
             val personVatShare = if (isActive && totalLiquorSubtotal > 0.0) {
                 if (state.taxAndTip.isVatPercentage) {

@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Share
@@ -216,7 +217,7 @@ fun buildReceiptBitmap(
 
     for (b in breakdowns) {
         // Person name row
-        drawText("${b.person.emoji} ${b.person.name.uppercase()}", margin, bold = true, size = 32f)
+        drawText(b.person.name.uppercase(), margin, bold = true, size = 32f)
         paint.color = android.graphics.Color.parseColor("#111111")
         paint.textSize = 32f
         paint.textAlign = Paint.Align.RIGHT
@@ -545,7 +546,7 @@ fun FullExportReceiptCard(
                 .padding(horizontal = 20.dp, vertical = 24.dp)
         ) {
             val paidByPerson = uiState.people.find { it.id == uiState.paidByPersonId }
-            val paidByName = paidByPerson?.let { "${it.emoji} ${it.name}" } ?: "N/A"
+            val paidByName = paidByPerson?.name ?: "N/A"
 
             Text(
                 text = "SPLIXTER RECEIPT",
@@ -576,7 +577,13 @@ fun FullExportReceiptCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 breakdowns.forEach { b ->
-                    PersonReceiptBlock(breakdown = b)
+                    val isPayer = b.person.id == uiState.paidByPersonId
+                    PersonReceiptBlock(
+                        breakdown = b,
+                        paidByName = paidByName,
+                        isPayer = isPayer,
+                        allBreakdowns = breakdowns
+                    )
                 }
             }
 
@@ -682,7 +689,35 @@ fun FullExportReceiptCard(
 }
 
 @Composable
-fun PersonReceiptBlock(breakdown: PersonBreakdown) {
+fun PersonReceiptBlock(
+    breakdown: PersonBreakdown,
+    paidByName: String,
+    isPayer: Boolean,
+    allBreakdowns: List<PersonBreakdown>
+) {
+    val context = LocalContext.current
+    val person = breakdown.person
+    val shareText = remember(breakdown, paidByName, isPayer, allBreakdowns) {
+        if (isPayer) {
+            val otherDebts = allBreakdowns
+                .filter { it.person.id != person.id && it.grandTotal > 0.01 }
+                .map { "${it.person.name} owes ₹${String.format(Locale.US, "%.2f", it.grandTotal)}" }
+            val debtSummary = if (otherDebts.isNotEmpty()) otherDebts.joinToString(", ") else "Nobody owes you anything"
+            val totalOwed = allBreakdowns
+                .filter { it.person.id != person.id }
+                .sumOf { it.grandTotal }
+            "Hey ${person.name}! Here is the payment summary for your paid bill: ${debtSummary}. Total collection: ₹${String.format(Locale.US, "%.2f", totalOwed)}. - Sent from Splixter"
+        } else {
+            val itemsSummary = breakdown.items.joinToString { "${it.first.name} (₹${String.format(Locale.US, "%.2f", it.second)})" }
+            val taxTip = breakdown.taxShare + breakdown.tipShare + breakdown.vatShare
+            val taxTipStr = if (taxTip > 0.001) " + Tax & Tip: ₹${String.format(Locale.US, "%.2f", taxTip)}" else ""
+            val disc = breakdown.discountShare
+            val discStr = if (disc > 0.001) " - Discount: ₹${String.format(Locale.US, "%.2f", disc)}" else ""
+            
+            "Hey ${person.name}! Your share for the bill is ₹${String.format(Locale.US, "%.2f", breakdown.grandTotal)} (Paid by $paidByName).${discStr}${taxTipStr}. Details: ${itemsSummary}. - Sent from Splixter"
+        }
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -690,8 +725,6 @@ fun PersonReceiptBlock(breakdown: PersonBreakdown) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = breakdown.person.emoji, fontSize = 16.sp)
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = breakdown.person.name.uppercase(),
                     fontFamily = FontFamily.Monospace,
@@ -699,6 +732,34 @@ fun PersonReceiptBlock(breakdown: PersonBreakdown) {
                     fontSize = 16.sp,
                     color = Color(0xFF222222)
                 )
+                Spacer(modifier = Modifier.width(6.dp))
+                IconButton(
+                    onClick = {
+                        val number = person.phoneNumber
+                        if (!number.isNullOrBlank()) {
+                            val smsIntent = Intent(Intent.ACTION_SENDTO).apply {
+                                data = android.net.Uri.parse("smsto:$number")
+                                putExtra("sms_body", shareText)
+                            }
+                            context.startActivity(smsIntent)
+                        } else {
+                            val sendIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                                type = "text/plain"
+                            }
+                            context.startActivity(Intent.createChooser(sendIntent, "Share Share Breakdown"))
+                        }
+                    },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = if (person.phoneNumber != null) Icons.AutoMirrored.Filled.Send else Icons.Default.Share,
+                        contentDescription = "Share share details",
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
             }
             Text(
                 text = "₹${String.format(Locale.US, "%.2f", breakdown.grandTotal)}",

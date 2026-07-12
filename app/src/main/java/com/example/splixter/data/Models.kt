@@ -33,7 +33,8 @@ data class Person(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
     val color: Long, // ARGB color format
-    val emoji: String = "🍕"
+    val emoji: String = "🍕",
+    val phoneNumber: String? = null
 )
 
 @Immutable

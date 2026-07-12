@@ -1,5 +1,7 @@
 package com.example.splixter.ui.screens
 
+import com.example.splixter.ui.components.bounceClick
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -314,6 +316,7 @@ fun ItemAssignmentScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // View Split Bill Button
+            val assignContinueBtnInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             Button(
                 onClick = {
                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
@@ -321,10 +324,12 @@ fun ItemAssignmentScreen(
                 },
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(),
+                interactionSource = assignContinueBtnInteractionSource,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
                     .clip(RoundedCornerShape(12.dp))
+                    .bounceClick(assignContinueBtnInteractionSource)
                     .background(
                         androidx.compose.ui.graphics.Brush.horizontalGradient(
                             colors = listOf(MaterialTheme.colorScheme.primary, Color(0xFF0EA5E9))
@@ -447,7 +452,7 @@ private fun PersonAssignChip(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
             Text(
-                text = "${person.emoji} ${person.name}",
+                text = person.name,
                 fontSize = 14.sp,
                 fontWeight = if (isAssigned) FontWeight.Bold else FontWeight.Medium,
                 color = textColor

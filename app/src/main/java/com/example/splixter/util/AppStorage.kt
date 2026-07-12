@@ -29,6 +29,7 @@ class AppStorage(context: Context) {
             obj.put("name", p.name)
             obj.put("color", p.color)
             obj.put("emoji", p.emoji)
+            obj.put("phoneNumber", p.phoneNumber ?: "")
             peopleArray.put(obj)
         }
         editor.putString("people_json", peopleArray.toString())
@@ -88,7 +89,8 @@ class AppStorage(context: Context) {
                             id = obj.getString("id"),
                             name = obj.getString("name"),
                             color = obj.getLong("color"),
-                            emoji = obj.optString("emoji", "😎")
+                            emoji = obj.optString("emoji", "😎"),
+                            phoneNumber = obj.optString("phoneNumber", "").ifEmpty { null }
                         )
                     )
                 }
@@ -193,6 +195,7 @@ class AppStorage(context: Context) {
                 pObj.put("name", p.name)
                 pObj.put("color", p.color)
                 pObj.put("emoji", p.emoji)
+                pObj.put("phoneNumber", p.phoneNumber ?: "")
                 peopleArray.put(pObj)
             }
             obj.put("people", peopleArray)
@@ -254,7 +257,8 @@ class AppStorage(context: Context) {
                             id = pObj.getString("id"),
                             name = pObj.getString("name"),
                             color = pObj.getLong("color"),
-                            emoji = pObj.optString("emoji", "😎")
+                            emoji = pObj.optString("emoji", "😎"),
+                            phoneNumber = pObj.optString("phoneNumber", "").ifEmpty { null }
                         )
                     )
                 }
@@ -330,6 +334,7 @@ class AppStorage(context: Context) {
                 pObj.put("name", p.name)
                 pObj.put("color", p.color)
                 pObj.put("emoji", p.emoji)
+                pObj.put("phoneNumber", p.phoneNumber ?: "")
                 peopleArray.put(pObj)
             }
             obj.put("members", peopleArray)
@@ -356,7 +361,8 @@ class AppStorage(context: Context) {
                             id = pObj.getString("id"),
                             name = pObj.getString("name"),
                             color = pObj.getLong("color"),
-                            emoji = pObj.optString("emoji", "😎")
+                            emoji = pObj.optString("emoji", "😎"),
+                            phoneNumber = pObj.optString("phoneNumber", "").ifEmpty { null }
                         )
                     )
                 }
