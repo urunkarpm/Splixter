@@ -91,24 +91,23 @@ fun SplashScreen(viewModel: SplitterViewModel, modifier: Modifier = Modifier) {
                     translationY = translationAnim.value
                 }
             ) {
-                // Minimalist Emblem
+                // Official App Logo Emblem
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(80.dp)
-                        .clip(RoundedCornerShape(24.dp))
+                        .size(92.dp)
+                        .clip(RoundedCornerShape(26.dp))
                         .background(
                             Brush.linearGradient(
-                                colors = listOf(Color(0xFF6366F1), Color(0xFF4338CA))
+                                colors = listOf(Color(0xFF7E57C2), Color(0xFF5E35B1))
                             )
                         )
-                        .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
+                        .border(1.5.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(26.dp))
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ReceiptLong,
-                        contentDescription = "Splixter Logo",
-                        tint = Color.White,
-                        modifier = Modifier.size(40.dp)
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = com.example.splixter.R.drawable.ic_launcher_foreground),
+                        contentDescription = "Splixter App Logo",
+                        modifier = Modifier.size(80.dp)
                     )
                 }
 
