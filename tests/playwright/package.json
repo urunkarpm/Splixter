@@ -1,0 +1,36 @@
+{
+  "name": "splixter-playwright-tests",
+  "version": "2.1.0",
+  "description": "Rigorous and deep testing test suite with negative scenarios in Playwright + JS for Splixter",
+  "main": "run_tests.js",
+  "scripts": {
+    "test": "node run_tests.js",
+    "test:spec": "npx playwright test",
+    "test:onboarding": "node run_tests.js --spec 01_onboarding_profile",
+    "test:mode": "node run_tests.js --spec 02_mode_selection",
+    "test:people": "node run_tests.js --spec 03_people_setup",
+    "test:scan": "node run_tests.js --spec 04_scan_and_bill_input",
+    "test:assign": "node run_tests.js --spec 05_item_assignment",
+    "test:receipt": "node run_tests.js --spec 06_receipt_summary",
+    "test:lobby": "node run_tests.js --spec 07_lobby_hub",
+    "test:expenses": "node run_tests.js --spec 08_trip_expenses",
+    "test:settle": "node run_tests.js --spec 09_trip_summary_settle",
+    "test:resilience": "node run_tests.js --spec 10_edge_cases_resilience"
+  },
+  "keywords": [
+    "playwright",
+    "android",
+    "testing",
+    "jetpack-compose",
+    "negative-testing",
+    "splixter"
+  ],
+  "author": "Splixter QA Team",
+  "license": "ISC",
+  "dependencies": {
+    "playwright": "^1.50.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0"
+  }
+}
