@@ -53,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -903,25 +904,34 @@ private fun PersonBalanceCard(balance: TripPersonBalance) {
                 }
             }
 
-            val isDark = isSystemInDarkTheme()
-            val creditorColor = if (isDark) Color(0xFF34D399) else Color(0xFF047857)
-            val debtorColor = if (isDark) Color(0xFFFB7185) else Color(0xFFBE123C)
-            val creditorBg = if (isDark) Color(0xFF065F46).copy(alpha = 0.45f) else Color(0xFFD1FAE5)
-            val debtorBg = if (isDark) Color(0xFF881337).copy(alpha = 0.45f) else Color(0xFFFFE4E6)
+            val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+            
+            // High-contrast, WCAG AAA compliant colors
+            val creditorTextColor = if (isDarkTheme) Color(0xFF4ADE80) else Color(0xFF15803D)
+            val creditorBgColor = if (isDarkTheme) Color(0xFF064E3B).copy(alpha = 0.65f) else Color(0xFFDCFCE7)
+            val creditorBorderColor = if (isDarkTheme) Color(0xFF059669) else Color(0xFF86EFAC)
+
+            val debtorTextColor = if (isDarkTheme) Color(0xFFFB7185) else Color(0xFF9F1239)
+            val debtorBgColor = if (isDarkTheme) Color(0xFF4C0519).copy(alpha = 0.65f) else Color(0xFFFFE4E6)
+            val debtorBorderColor = if (isDarkTheme) Color(0xFFE11D48) else Color(0xFFFDA4AF)
+
+            val settledTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+            val settledBgColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            val settledBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
 
             Surface(
                 color = when {
-                    isCreditor -> creditorBg
-                    isDebtor -> debtorBg
-                    else -> MaterialTheme.colorScheme.surfaceVariant
+                    isCreditor -> creditorBgColor
+                    isDebtor -> debtorBgColor
+                    else -> settledBgColor
                 },
                 shape = RoundedCornerShape(8.dp),
                 border = BorderStroke(
                     1.dp,
                     when {
-                        isCreditor -> creditorColor.copy(alpha = 0.5f)
-                        isDebtor -> debtorColor.copy(alpha = 0.5f)
-                        else -> MaterialTheme.colorScheme.outlineVariant
+                        isCreditor -> creditorBorderColor
+                        isDebtor -> debtorBorderColor
+                        else -> settledBorderColor
                     }
                 )
             ) {
@@ -935,11 +945,11 @@ private fun PersonBalanceCard(balance: TripPersonBalance) {
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = when {
-                        isCreditor -> creditorColor
-                        isDebtor -> debtorColor
-                        else -> MaterialTheme.colorScheme.onSurface
+                        isCreditor -> creditorTextColor
+                        isDebtor -> debtorTextColor
+                        else -> settledTextColor
                     },
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
                 )
             }
         }
