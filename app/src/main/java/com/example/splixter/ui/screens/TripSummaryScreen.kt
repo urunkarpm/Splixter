@@ -83,8 +83,30 @@ fun TripSummaryScreen(
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     val balances = remember(uiState.tripExpenses, uiState.people) { viewModel.calculateTripBalances() }
-    val settlements = remember(uiState.tripExpenses, uiState.people) { viewModel.calculateTripSettlements() }
+    val rawSettlements = remember(uiState.tripExpenses, uiState.people) { viewModel.calculateTripSettlements() }
     val totalTripAmount = uiState.tripExpenses.sumOf { it.amount }
+
+    val currentUser = uiState.people.find { it.isCurrentUser }
+    val currentUserName = currentUser?.name ?: uiState.userProfile?.name ?: ""
+    val currentUserId = currentUser?.id ?: uiState.userProfile?.id ?: uiState.currentUserId ?: ""
+
+    val settlements = remember(rawSettlements, currentUserId, currentUserName) {
+        rawSettlements.sortedWith(
+            compareBy<TripSettlement> { s ->
+                val isDebtor = s.fromPerson.isCurrentUser ||
+                    (currentUserId.isNotBlank() && currentUserId.equals(s.fromPerson.id, ignoreCase = true)) ||
+                    (currentUserName.isNotBlank() && currentUserName.trim().equals(s.fromPerson.name.trim(), ignoreCase = true))
+                val isCreditor = s.toPerson.isCurrentUser ||
+                    (currentUserId.isNotBlank() && currentUserId.equals(s.toPerson.id, ignoreCase = true)) ||
+                    (currentUserName.isNotBlank() && currentUserName.trim().equals(s.toPerson.name.trim(), ignoreCase = true))
+                when {
+                    isDebtor -> 1   // 1. You owe anyone (top priority)
+                    isCreditor -> 2 // 2. Someone owes you (secondary priority)
+                    else -> 3       // 3. Rest other transactions
+                }
+            }.thenByDescending { it.amount }
+        )
+    }
 
     val shareText = remember(uiState.tripName, totalTripAmount, uiState.people, settlements, balances) {
         buildString {
