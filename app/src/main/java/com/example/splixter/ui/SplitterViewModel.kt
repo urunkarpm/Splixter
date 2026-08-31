@@ -911,9 +911,18 @@ class SplitterViewModel : ViewModel() {
     fun extractLobbyCode(input: String): String {
         val clean = input.trim()
         if (clean.contains("splixter://lobby/")) {
-            return clean.substringAfter("splixter://lobby/").trim().replace("-", "").uppercase()
+            val after = clean.substringAfter("splixter://lobby/").trim().take(6)
+            return after.replace("-", "").uppercase()
         }
-        return clean.replace("-", "").replace(" ", "").uppercase()
+        if (clean.contains("/lobby/")) {
+            val after = clean.substringAfter("/lobby/").trim().take(6)
+            return after.replace("-", "").uppercase()
+        }
+        val match = Regex("""\b[A-Z0-9]{6}\b""").find(clean.uppercase())
+        if (match != null) {
+            return match.value
+        }
+        return clean.replace("-", "").replace(" ", "").take(6).uppercase()
     }
 
     fun createLobby(tripName: String, hostName: String, initialMembers: List<Person> = emptyList()) {

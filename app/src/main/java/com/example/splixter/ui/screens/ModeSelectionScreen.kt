@@ -95,6 +95,11 @@ import com.example.splixter.ui.theme.PlusJakartaSansFontFamily
 import com.example.splixter.util.AppUpdateInfo
 import com.example.splixter.util.AppUpdateResult
 
+import androidx.compose.material.icons.filled.QrCodeScanner
+import com.example.splixter.data.LobbySession
+import com.example.splixter.ui.components.ClaimProfileDialog
+import com.example.splixter.ui.components.QrScannerDialog
+
 @Composable
 fun ModeSelectionScreen(
     uiState: SplitterUiState,
@@ -111,11 +116,67 @@ fun ModeSelectionScreen(
     var upiInput by remember { mutableStateOf(profile?.upiId ?: "") }
     var isSettingsSaved by remember { mutableStateOf(false) }
 
+    // Direct QR Scanner & Member Claiming state
+    var showQrScanner by remember { mutableStateOf(false) }
+    var pendingClaimSession by remember { mutableStateOf<LobbySession?>(null) }
+    var pendingJoinCode by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(profile) {
         if (profile != null) {
             nameInput = profile.name
             upiInput = profile.upiId ?: ""
         }
+    }
+
+    if (showQrScanner) {
+        QrScannerDialog(
+            onDismiss = { showQrScanner = false },
+            onCodeScanned = { rawPayload ->
+                val extracted = viewModel.extractLobbyCode(rawPayload)
+                showQrScanner = false
+                if (extracted.isNotBlank()) {
+                    val memberName = profile?.name?.ifBlank { "Guest" } ?: "Guest"
+                    Toast.makeText(context, "Checking group $extracted...", Toast.LENGTH_SHORT).show()
+                    viewModel.fetchLobbyForJoin(extracted) { session ->
+                        if (session != null && session.members.isNotEmpty()) {
+                            pendingClaimSession = session
+                            pendingJoinCode = extracted
+                        } else {
+                            viewModel.joinLobby(extracted, memberName, null)
+                        }
+                    }
+                }
+            }
+        )
+    }
+
+    if (pendingClaimSession != null && pendingJoinCode != null) {
+        ClaimProfileDialog(
+            session = pendingClaimSession!!,
+            joinMemberName = profile?.name?.ifBlank { "Guest" } ?: "Guest",
+            onDismiss = {
+                pendingClaimSession = null
+                pendingJoinCode = null
+            },
+            onClaimMember = { personId ->
+                val code = pendingJoinCode!!
+                val name = profile?.name?.ifBlank { "Guest" } ?: "Guest"
+                pendingClaimSession = null
+                pendingJoinCode = null
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                Toast.makeText(context, "Claimed profile & joined trip!", Toast.LENGTH_SHORT).show()
+                viewModel.joinLobby(code, name, claimPersonId = personId)
+            },
+            onJoinAsNew = {
+                val code = pendingJoinCode!!
+                val name = profile?.name?.ifBlank { "Guest" } ?: "Guest"
+                pendingClaimSession = null
+                pendingJoinCode = null
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                Toast.makeText(context, "Joining as new member...", Toast.LENGTH_SHORT).show()
+                viewModel.joinLobby(code, name, claimPersonId = null)
+            }
+        )
     }
 
     AppBackground(modifier = modifier) {
@@ -194,6 +255,24 @@ fun ModeSelectionScreen(
                                 modifier = Modifier.size(12.dp)
                             )
                         }
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // QR Scan & Join Button
+                    IconButton(
+                        onClick = { showQrScanner = true },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.QrCodeScanner,
+                            contentDescription = "Scan Group QR Code",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
 
                     Spacer(modifier = Modifier.width(8.dp))
