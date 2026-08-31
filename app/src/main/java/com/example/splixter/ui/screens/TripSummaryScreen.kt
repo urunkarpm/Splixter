@@ -58,6 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.splixter.data.AppStep
@@ -367,10 +368,15 @@ fun TripSummaryScreen(
                         }
                     }
                 } else {
+                    val currentUser = uiState.people.find { it.isCurrentUser }
+                    val currentUserName = currentUser?.name ?: uiState.userProfile?.name ?: ""
+                    val currentUserId = currentUser?.id ?: uiState.userProfile?.id ?: uiState.currentUserId ?: ""
+
                     items(settlements) { settlement ->
                         SettlementCard(
                             settlement = settlement,
-                            currentUserId = uiState.currentUserId ?: uiState.userProfile?.id ?: "",
+                            currentUserId = currentUserId,
+                            currentUserName = currentUserName,
                             tripName = uiState.tripName,
                             onRecordSettlement = {
                                 viewModel.recordSettlementPayment(settlement)
@@ -485,6 +491,7 @@ fun TripSummaryScreen(
 private fun SettlementCard(
     settlement: TripSettlement,
     currentUserId: String,
+    currentUserName: String,
     tripName: String,
     onRecordSettlement: () -> Unit
 ) {
@@ -494,8 +501,13 @@ private fun SettlementCard(
     var showCustomUpiDialog by remember { mutableStateOf(false) }
     var customUpiInput by remember { mutableStateOf("") }
 
-    val isCurrentDebtor = currentUserId.isNotBlank() && currentUserId == settlement.fromPerson.id
-    val isCurrentCreditor = currentUserId.isNotBlank() && currentUserId == settlement.toPerson.id
+    val isCurrentDebtor = settlement.fromPerson.isCurrentUser ||
+        (currentUserId.isNotBlank() && currentUserId == settlement.fromPerson.id) ||
+        (currentUserName.isNotBlank() && currentUserName.equals(settlement.fromPerson.name, ignoreCase = true))
+
+    val isCurrentCreditor = settlement.toPerson.isCurrentUser ||
+        (currentUserId.isNotBlank() && currentUserId == settlement.toPerson.id) ||
+        (currentUserName.isNotBlank() && currentUserName.equals(settlement.toPerson.name, ignoreCase = true))
 
     val recipientUpi = settlement.toPerson.upiId?.ifBlank { null }
         ?: settlement.toPerson.phoneNumber?.let { if (it.contains("@")) it else "$it@upi" }
@@ -694,71 +706,99 @@ private fun SettlementCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Action row: UPI & Settle actions
+            // Action row: Role-aware UPI, Reminder & Settle actions
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (isCurrentCreditor) {
-                    // Creditor: Remind via WhatsApp button
-                    OutlinedButton(
-                        onClick = {
-                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                            val msg = "Hey ${settlement.fromPerson.name}, please settle ₹${String.format(Locale.US, "%.2f", settlement.amount)} for $tripName.${if (!recipientUpi.isNullOrBlank()) " My UPI is: $recipientUpi" else ""}"
-                            val waIntent = Intent(Intent.ACTION_SEND).apply {
-                                putExtra(Intent.EXTRA_TEXT, msg)
-                                type = "text/plain"
-                            }
-                            context.startActivity(Intent.createChooser(waIntent, "Send Payment Reminder"))
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, Color(0xFF25D366).copy(alpha = 0.6f)),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF25D366)),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                        modifier = Modifier.weight(1f).height(38.dp)
-                    ) {
-                        Text(
-                            text = "💬 Send Reminder",
-                            fontFamily = PlusJakartaSansFontFamily,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                } else {
-                    // Debtor or Group participant: 1-Click UPI Payment
-                    OutlinedButton(
-                        onClick = {
-                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            if (recipientUpi != null) {
-                                val upiUri = android.net.Uri.parse(
-                                    "upi://pay?pa=$recipientUpi&pn=${android.net.Uri.encode(settlement.toPerson.name)}&am=${String.format(Locale.US, "%.2f", settlement.amount)}&cu=INR&tn=${android.net.Uri.encode("Splixter Settlement")}"
-                                )
-                                val upiIntent = Intent(Intent.ACTION_VIEW, upiUri)
-                                try {
-                                    context.startActivity(upiIntent)
-                                } catch (e: Exception) {
-                                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                    val clip = android.content.ClipData.newPlainText("UPI Payment Info", "Pay ₹${String.format(Locale.US, "%.2f", settlement.amount)} to ${settlement.toPerson.name} ($recipientUpi)")
-                                    clipboard.setPrimaryClip(clip)
-                                    android.widget.Toast.makeText(context, "Payment info copied to clipboard", android.widget.Toast.LENGTH_SHORT).show()
+                when {
+                    isCurrentCreditor -> {
+                        // Creditor: Remind via WhatsApp button
+                        OutlinedButton(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                val msg = "Hey ${settlement.fromPerson.name}, please settle ₹${String.format(Locale.US, "%.2f", settlement.amount)} for $tripName.${if (!recipientUpi.isNullOrBlank()) " My UPI is: $recipientUpi" else ""}"
+                                val waIntent = Intent(Intent.ACTION_SEND).apply {
+                                    putExtra(Intent.EXTRA_TEXT, msg)
+                                    type = "text/plain"
                                 }
-                            } else {
-                                showCustomUpiDialog = true
+                                context.startActivity(Intent.createChooser(waIntent, "Send Payment Reminder"))
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, Color(0xFF25D366).copy(alpha = 0.6f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF25D366)),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            modifier = Modifier.weight(1f).height(38.dp)
+                        ) {
+                            Text(
+                                text = "💬 Remind ${settlement.fromPerson.name}",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    isCurrentDebtor -> {
+                        // Debtor ONLY: 1-Click UPI Payment Button to pay the creditor
+                        OutlinedButton(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                if (recipientUpi != null) {
+                                    val upiUri = android.net.Uri.parse(
+                                        "upi://pay?pa=$recipientUpi&pn=${android.net.Uri.encode(settlement.toPerson.name)}&am=${String.format(Locale.US, "%.2f", settlement.amount)}&cu=INR&tn=${android.net.Uri.encode("Splixter Settlement")}"
+                                    )
+                                    val upiIntent = Intent(Intent.ACTION_VIEW, upiUri)
+                                    try {
+                                        context.startActivity(upiIntent)
+                                    } catch (e: Exception) {
+                                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                        val clip = android.content.ClipData.newPlainText("UPI Payment Info", "Pay ₹${String.format(Locale.US, "%.2f", settlement.amount)} to ${settlement.toPerson.name} ($recipientUpi)")
+                                        clipboard.setPrimaryClip(clip)
+                                        android.widget.Toast.makeText(context, "Payment info copied to clipboard", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    showCustomUpiDialog = true
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            modifier = Modifier.weight(1f).height(38.dp)
+                        ) {
+                            Text(
+                                text = "⚡ Pay ₹${String.format(Locale.US, "%.0f", settlement.amount)} (UPI)",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    else -> {
+                        // 3rd party observer (neither owes nor is owed in this direct transfer)
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                            modifier = Modifier.weight(1f).height(38.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            ) {
+                                Text(
+                                    text = "Pending: ${settlement.fromPerson.name} ➔ ${settlement.toPerson.name}",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                        modifier = Modifier.weight(1f).height(38.dp)
-                    ) {
-                        Text(
-                            text = if (isCurrentDebtor) "⚡ Pay ₹${String.format(Locale.US, "%.0f", settlement.amount)} (UPI)" else "⚡ Pay via UPI",
-                            fontFamily = PlusJakartaSansFontFamily,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        }
                     }
                 }
 
@@ -802,7 +842,11 @@ private fun SettlementCard(
                             )
                         } else {
                             Text(
-                                text = if (isCurrentCreditor) "Confirm Received" else "Mark Paid",
+                                text = when {
+                                    isCurrentCreditor -> "Received ✓"
+                                    isCurrentDebtor -> "Paid ✓"
+                                    else -> "Mark Settled"
+                                },
                                 fontFamily = PlusJakartaSansFontFamily,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
