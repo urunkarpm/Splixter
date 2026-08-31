@@ -890,12 +890,20 @@ class SplitterViewModel : ViewModel() {
                     _uiState.update { s ->
                         if (!s.activeLobbyCode.equals(code, ignoreCase = true)) return@update s
                         
+                        val myId = s.currentUserId
+                        val myProfile = s.userProfile
+                        val mappedMembers = remote.members.map { m ->
+                            val isUser = (myId != null && m.id == myId) ||
+                                (myProfile != null && (m.id == myProfile.id || m.name.equals(myProfile.name, ignoreCase = true)))
+                            m.copy(isCurrentUser = isUser)
+                        }
+
                         val updatedSavedLobbies = s.savedLobbies.map { lob ->
-                            if (lob.code.equals(code, ignoreCase = true)) remote else lob
+                            if (lob.code.equals(code, ignoreCase = true)) remote.copy(members = mappedMembers) else lob
                         }
                         s.copy(
                             tripName = remote.name,
-                            people = remote.members,
+                            people = mappedMembers,
                             tripExpenses = remote.expenses,
                             tripSettlements = remote.settlements,
                             tripActivities = remote.activities,
@@ -1138,12 +1146,18 @@ class SplitterViewModel : ViewModel() {
 
     fun loadLobby(code: String) {
         val session = _uiState.value.savedLobbies.find { it.code.equals(code, ignoreCase = true) } ?: return
+        val profile = _uiState.value.userProfile
+        val myId = _uiState.value.currentUserId ?: profile?.id ?: session.hostPersonId
+        val mappedMembers = session.members.map { m ->
+            val isUser = m.id == myId || (profile != null && (m.id == profile.id || m.name.equals(profile.name, ignoreCase = true)))
+            m.copy(isCurrentUser = isUser)
+        }
         updateState(immediate = true) { s ->
             s.copy(
                 activeLobbyCode = session.code,
-                currentUserId = session.hostPersonId,
+                currentUserId = myId,
                 tripName = session.name,
-                people = session.members,
+                people = mappedMembers,
                 tripExpenses = session.expenses,
                 tripSettlements = session.settlements,
                 tripActivities = session.activities,

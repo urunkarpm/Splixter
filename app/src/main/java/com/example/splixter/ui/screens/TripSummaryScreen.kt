@@ -504,12 +504,12 @@ private fun SettlementCard(
     var customUpiInput by remember { mutableStateOf("") }
 
     val isCurrentDebtor = settlement.fromPerson.isCurrentUser ||
-        (currentUserId.isNotBlank() && currentUserId == settlement.fromPerson.id) ||
-        (currentUserName.isNotBlank() && currentUserName.equals(settlement.fromPerson.name, ignoreCase = true))
+        (currentUserId.isNotBlank() && currentUserId.equals(settlement.fromPerson.id, ignoreCase = true)) ||
+        (currentUserName.isNotBlank() && currentUserName.trim().equals(settlement.fromPerson.name.trim(), ignoreCase = true))
 
     val isCurrentCreditor = settlement.toPerson.isCurrentUser ||
-        (currentUserId.isNotBlank() && currentUserId == settlement.toPerson.id) ||
-        (currentUserName.isNotBlank() && currentUserName.equals(settlement.toPerson.name, ignoreCase = true))
+        (currentUserId.isNotBlank() && currentUserId.equals(settlement.toPerson.id, ignoreCase = true)) ||
+        (currentUserName.isNotBlank() && currentUserName.trim().equals(settlement.toPerson.name.trim(), ignoreCase = true))
 
     val recipientUpi = settlement.toPerson.upiId?.ifBlank { null }
         ?: settlement.toPerson.phoneNumber?.let { if (it.contains("@")) it else "$it@upi" }
