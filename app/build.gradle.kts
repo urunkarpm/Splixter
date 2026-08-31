@@ -11,8 +11,8 @@ android {
         applicationId = "com.example.splixter"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "2.0.0"
     }
 
     signingConfigs {
@@ -69,6 +69,7 @@ dependencies {
 
   // Compose
   implementation(libs.androidx.compose.ui)
+  implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.compose.material3)
   // Tooling
@@ -101,6 +102,8 @@ dependencies {
   implementation(libs.camerax.lifecycle)
   implementation(libs.camerax.view)
 
-  // ML Kit Text Recognition
+  // ML Kit Text Recognition & Barcode Scanning
   implementation(libs.mlkit.text.recognition)
+  implementation(libs.mlkit.barcode.scanning)
+  implementation(libs.zxing.core)
 }

@@ -77,16 +77,16 @@ fun WorkflowStepHeader(currentStep: AppStep) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(bgColor)
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(20.dp)
+                        .size(18.dp)
                         .clip(CircleShape)
                         .background(
-                            if (isCurrent) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f)
+                            if (isCurrent) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.25f)
                             else Color.Transparent
                         ),
                     contentAlignment = Alignment.Center
@@ -96,12 +96,12 @@ fun WorkflowStepHeader(currentStep: AppStep) {
                             imageVector = Icons.Default.Check,
                             contentDescription = null,
                             tint = textColor,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(12.dp)
                         )
                     } else {
                         Text(
                             text = num.toString(),
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = textColor
                         )
@@ -110,7 +110,7 @@ fun WorkflowStepHeader(currentStep: AppStep) {
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = label,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
                     fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
                     color = textColor
                 )
@@ -120,10 +120,10 @@ fun WorkflowStepHeader(currentStep: AppStep) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(2.dp)
-                        .padding(horizontal = 4.dp)
+                        .height(1.5.dp)
+                        .padding(horizontal = 6.dp)
                         .background(
-                            if (isPassed) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            if (isPassed) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                             else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                         )
                 )

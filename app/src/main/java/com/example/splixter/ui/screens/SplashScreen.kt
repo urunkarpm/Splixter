@@ -1,15 +1,10 @@
 package com.example.splixter.ui.screens
 
-import com.example.splixter.ui.components.bounceClick
-
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,28 +14,29 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.GenericShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -50,135 +46,150 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.splixter.data.AppStep
 import com.example.splixter.ui.SplitterViewModel
+import com.example.splixter.ui.components.bounceClick
 import com.example.splixter.ui.theme.PlusJakartaSansFontFamily
-import kotlinx.coroutines.delay
-
 
 @Composable
 fun SplashScreen(viewModel: SplitterViewModel, modifier: Modifier = Modifier) {
-    val infiniteTransition = rememberInfiniteTransition(label = "heroFloat")
-    val float1 by infiniteTransition.animateFloat(
-        initialValue = -22f, targetValue = 22f,
-        animationSpec = infiniteRepeatable(tween(3200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "float1"
-    )
-    val float2 by infiniteTransition.animateFloat(
-        initialValue = 18f, targetValue = -26f,
-        animationSpec = infiniteRepeatable(tween(3800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "float2"
-    )
-    val float3 by infiniteTransition.animateFloat(
-        initialValue = -15f, targetValue = 25f,
-        animationSpec = infiniteRepeatable(tween(4200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "float3"
-    )
-    val rot1 by infiniteTransition.animateFloat(
-        initialValue = -12f, targetValue = 12f,
-        animationSpec = infiniteRepeatable(tween(4500, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "rot1"
-    )
-
-    var sliceMode by remember { mutableStateOf(0) }
-    val sliceProgress = remember { Animatable(0f) }
+    val alphaAnim = remember { Animatable(0f) }
+    val translationAnim = remember { Animatable(30f) }
 
     LaunchedEffect(Unit) {
-        while (true) {
-            delay(1000)
-            sliceProgress.animateTo(1f, tween(240, easing = FastOutSlowInEasing))
-            delay(600)
-            sliceProgress.animateTo(0f, tween(200))
-            sliceMode = (sliceMode + 1) % 5
-        }
+        alphaAnim.animateTo(1f, tween(800, easing = FastOutSlowInEasing))
+        translationAnim.animateTo(0f, tween(800, easing = FastOutSlowInEasing))
     }
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(
-                Brush.verticalGradient(
+                Brush.radialGradient(
                     colors = listOf(
-                        Color(0xFF0B0D12),
-                        Color(0xFF19132B),
-                        Color(0xFF251A42),
-                        Color(0xFF0D0F14)
-                    )
+                        Color(0xFF1E1B4B), // Deep Indigo core
+                        Color(0xFF0F111A), // Obsidian
+                        Color(0xFF090A0F)  // Pure dark
+                    ),
+                    radius = 1200f
                 )
             )
     ) {
-        Text("💵", fontSize = 48.sp, modifier = Modifier.offset(x = 35.dp, y = 100.dp).graphicsLayer(translationY = float1, rotationZ = rot1))
-        Text("💰", fontSize = 54.sp, modifier = Modifier.align(Alignment.TopEnd).offset(x = (-40).dp, y = 140.dp).graphicsLayer(translationY = float2, rotationZ = -rot1))
-        Text("💸", fontSize = 50.sp, modifier = Modifier.align(Alignment.CenterStart).offset(x = 30.dp, y = (-90).dp).graphicsLayer(translationY = float3, rotationZ = rot1 * 1.5f))
-        Text("💲", fontSize = 44.sp, modifier = Modifier.align(Alignment.CenterEnd).offset(x = (-30).dp, y = (-40).dp).graphicsLayer(translationY = float1 * 1.2f, rotationZ = -rot1))
-        Text("🪙", fontSize = 46.sp, modifier = Modifier.align(Alignment.CenterEnd).offset(x = (-50).dp, y = 110.dp).graphicsLayer(translationY = float2 * 1.1f, rotationZ = rot1))
-        Text("🤑", fontSize = 52.sp, modifier = Modifier.align(Alignment.BottomStart).offset(x = 45.dp, y = (-180).dp).graphicsLayer(translationY = float3, rotationZ = -rot1 * 0.8f))
-        Text("💳", fontSize = 44.sp, modifier = Modifier.align(Alignment.BottomEnd).offset(x = (-40).dp, y = (-220).dp).graphicsLayer(translationY = float1 * 1.3f, rotationZ = rot1))
-        Text("🍕", fontSize = 46.sp, modifier = Modifier.align(Alignment.TopCenter).offset(x = (-60).dp, y = 75.dp).graphicsLayer(translationY = float2 * 0.9f, rotationZ = rot1))
-        Text("🍺", fontSize = 48.sp, modifier = Modifier.align(Alignment.TopCenter).offset(x = 60.dp, y = 85.dp).graphicsLayer(translationY = float1 * 1.1f, rotationZ = -rot1))
-        Text("🥃", fontSize = 44.sp, modifier = Modifier.align(Alignment.CenterStart).offset(x = 25.dp, y = 60.dp).graphicsLayer(translationY = float3 * 0.9f, rotationZ = rot1 * 1.2f))
-
-
         Column(
-            modifier = Modifier.fillMaxSize().statusBarsPadding().padding(32.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = 28.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Spacer(modifier = Modifier.height(60.dp))
+            Spacer(modifier = Modifier.height(40.dp))
 
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+            // Center Hero Brand
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.graphicsLayer {
+                    alpha = alphaAnim.value
+                    translationY = translationAnim.value
+                }
+            ) {
+                // Minimalist Emblem
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(Color(0xFF6366F1), Color(0xFF4338CA))
+                            )
+                        )
+                        .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
                 ) {
-                    Text(
-                        text = "Spli",
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 60.sp,
-                        color = Color.White,
-                        letterSpacing = 1.sp
-                    )
-                    SlicedX(sliceProgressProvider = { sliceProgress.value }, mode = sliceMode)
-                    Text(
-                        text = "ter",
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 60.sp,
-                        color = Color.White,
-                        letterSpacing = 1.sp
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ReceiptLong,
+                        contentDescription = "Splixter Logo",
+                        tint = Color.White,
+                        modifier = Modifier.size(40.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(28.dp))
 
                 Text(
-                    text = "Split restaurant bills & group expenses with effortless elegance.",
-                    fontSize = 17.sp,
-                    color = Color(0xFFDCD6F7),
+                    text = "Splixter",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 44.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    letterSpacing = (-0.5).sp
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Seamless bill splitting & multi-person expense settlements.",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 16.sp,
+                    color = Color(0xFF94A3B8),
                     textAlign = TextAlign.Center,
-                    lineHeight = 25.sp,
+                    lineHeight = 24.sp,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
+
+                Spacer(modifier = Modifier.height(36.dp))
+
+                // Feature Highlights Pill Strip
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    HeroFeaturePill(icon = Icons.AutoMirrored.Filled.ReceiptLong, label = "Itemized Split")
+                    HeroFeaturePill(icon = Icons.Default.SyncAlt, label = "Mutual Offsets")
+                    HeroFeaturePill(icon = Icons.Default.Payments, label = "1-Tap UPI")
+                }
             }
 
+            // Bottom CTA
             val startBtnInteractionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
             Button(
-                onClick = { viewModel.setStep(AppStep.PEOPLE) },
-                shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                onClick = {
+                    val profile = viewModel.uiState.value.userProfile
+                    if (profile == null || profile.name.isBlank()) {
+                        viewModel.setStep(AppStep.USER_PROFILE_SETUP)
+                    } else {
+                        viewModel.setStep(AppStep.MODE_SELECTION)
+                    }
+                },
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF6366F1),
+                    contentColor = Color.White
+                ),
                 contentPadding = PaddingValues(),
                 interactionSource = startBtnInteractionSource,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(60.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(16.dp))
                     .bounceClick(startBtnInteractionSource)
-                    .background(Brush.horizontalGradient(colors = listOf(Color(0xFF6C5CE7), Color(0xFF00B894))))
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Text("Get Started", fontSize = 19.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text(
+                        text = "Get Started",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Icon(imageVector = Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color.White)
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         }
@@ -186,57 +197,33 @@ fun SplashScreen(viewModel: SplitterViewModel, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun SlicedX(sliceProgressProvider: () -> Float, mode: Int) {
-    Box(contentAlignment = Alignment.Center) {
-        when (mode % 5) {
-            0 -> {
-                XPiece({ sliceProgressProvider() * 22f }, { sliceProgressProvider() * -22f },
-                    GenericShape { s, _ -> moveTo(0f, 0f); lineTo(s.width, 0f); lineTo(s.width, s.height); close() })
-                XPiece({ sliceProgressProvider() * -22f }, { sliceProgressProvider() * 22f },
-                    GenericShape { s, _ -> moveTo(0f, 0f); lineTo(s.width, s.height); lineTo(0f, s.height); close() })
-            }
-            1 -> {
-                XPiece({ 0f }, { sliceProgressProvider() * -26f },
-                    GenericShape { s, _ -> addRect(Rect(0f, 0f, s.width, s.height / 2f)) })
-                XPiece({ 0f }, { sliceProgressProvider() * 26f },
-                    GenericShape { s, _ -> addRect(Rect(0f, s.height / 2f, s.width, s.height)) })
-            }
-            2 -> {
-                XPiece({ sliceProgressProvider() * -22f }, { sliceProgressProvider() * -22f },
-                    GenericShape { s, _ -> moveTo(s.width, 0f); lineTo(0f, s.height); lineTo(0f, 0f); close() })
-                XPiece({ sliceProgressProvider() * 22f }, { sliceProgressProvider() * 22f },
-                    GenericShape { s, _ -> moveTo(s.width, 0f); lineTo(s.width, s.height); lineTo(0f, s.height); close() })
-            }
-            3 -> {
-                XPiece({ sliceProgressProvider() * -26f }, { 0f },
-                    GenericShape { s, _ -> addRect(Rect(0f, 0f, s.width / 2f, s.height)) })
-                XPiece({ sliceProgressProvider() * 26f }, { 0f },
-                    GenericShape { s, _ -> addRect(Rect(s.width / 2f, 0f, s.width, s.height)) })
-            }
-            else -> {
-                val d = 19f
-                XPiece({ -sliceProgressProvider() * d }, { -sliceProgressProvider() * d },
-                    GenericShape { s, _ -> addRect(Rect(0f, 0f, s.width / 2f, s.height / 2f)) })
-                XPiece({ sliceProgressProvider() * d }, { -sliceProgressProvider() * d },
-                    GenericShape { s, _ -> addRect(Rect(s.width / 2f, 0f, s.width, s.height / 2f)) })
-                XPiece({ -sliceProgressProvider() * d }, { sliceProgressProvider() * d },
-                    GenericShape { s, _ -> addRect(Rect(0f, s.height / 2f, s.width / 2f, s.height)) })
-                XPiece({ sliceProgressProvider() * d }, { sliceProgressProvider() * d },
-                    GenericShape { s, _ -> addRect(Rect(s.width / 2f, s.height / 2f, s.width, s.height)) })
-            }
+private fun HeroFeaturePill(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String
+) {
+    Surface(
+        color = Color(0xFF1E2230).copy(alpha = 0.85f),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF33384B))
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color(0xFF818CF8),
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = label,
+                fontFamily = PlusJakartaSansFontFamily,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFFE2E8F0)
+            )
         }
-    }
-}
-
-@Composable
-private fun XPiece(txProvider: () -> Float, tyProvider: () -> Float, shape: GenericShape) {
-    Box(modifier = Modifier.graphicsLayer { translationX = txProvider(); translationY = tyProvider() }) {
-        Text(
-            text = "x",
-            fontFamily = PlusJakartaSansFontFamily,
-            fontSize = 60.sp,
-            color = Color.White,
-            modifier = Modifier.clip(shape)
-        )
     }
 }

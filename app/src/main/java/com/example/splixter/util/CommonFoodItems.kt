@@ -154,6 +154,19 @@ object CommonFoodItems {
         "Falooda", "Gajar Ka Halwa", "Moong Dal Halwa", "Phirni", "Shahi Tukda", "Tiramisu", "New York Cheesecake", "Choco Lava Cake"
     )
 
+    val CATEGORY_PRESETS: Map<String, List<String>> = mapOf(
+        "⭐ Popular" to listOf("Paneer Tikka", "Butter Chicken", "Kingfisher Beer", "Butter Naan", "Chicken Biryani", "French Fries", "Cold Coffee", "Gulab Jamun"),
+        "🍢 Starters" to listOf("Paneer Tikka", "Chicken Tikka", "Hara Bhara Kebab", "Crispy Corn", "Chicken Wings", "Chili Paneer", "Veg Momos", "French Fries"),
+        "🍺 Drinks" to listOf("Kingfisher Beer", "Bira 91 White", "Corona Extra", "Old Monk Rum", "Jameson Whiskey", "Classic Mojito", "Long Island Iced Tea (LIIT)", "Red Wine Glass"),
+        "🍛 Mains" to listOf("Butter Chicken", "Dal Makhani", "Paneer Butter Masala", "Chicken Biryani", "Kadhai Chicken", "Mutton Rogan Josh", "Veg Dum Biryani"),
+        "🍞 Breads" to listOf("Butter Naan", "Garlic Naan", "Tandoori Roti", "Butter Roti", "Laccha Paratha", "Cheese Garlic Naan"),
+        "🍨 Desserts" to listOf("Sizzling Brownie with Ice Cream", "Gulab Jamun", "Vanilla Ice Cream", "Rasmalai", "Choco Lava Cake", "Tiramisu")
+    )
+
+    fun getQuickPresets(category: String): List<String> {
+        return CATEGORY_PRESETS[category] ?: CATEGORY_PRESETS["⭐ Popular"] ?: emptyList()
+    }
+
     fun getSuggestions(query: String, limit: Int = 8): List<String> {
         if (query.trim().length < 2) return emptyList()
         val cleanQuery = query.trim().lowercase()

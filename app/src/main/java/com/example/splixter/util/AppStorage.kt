@@ -5,10 +5,14 @@ import android.content.SharedPreferences
 import com.example.splixter.data.AppStep
 import com.example.splixter.data.BillHistoryRecord
 import com.example.splixter.data.BillItem
+import com.example.splixter.data.CalculationMode
 import com.example.splixter.data.ItemCategory
+import com.example.splixter.data.LobbySession
 import com.example.splixter.data.Person
 import com.example.splixter.data.SavedGroup
 import com.example.splixter.data.TaxAndTip
+import com.example.splixter.data.TripExpense
+import com.example.splixter.data.UserProfile
 import com.example.splixter.ui.SplitterUiState
 import org.json.JSONArray
 import org.json.JSONObject
@@ -20,6 +24,10 @@ class AppStorage(context: Context) {
     fun saveState(state: SplitterUiState) {
         val editor = prefs.edit()
         editor.putString("current_step", state.currentStep.name)
+        editor.putString("calculation_mode", state.calculationMode.name)
+        editor.putString("trip_name", state.tripName)
+        editor.putString("active_lobby_code", state.activeLobbyCode)
+        editor.putString("current_user_id", state.currentUserId)
 
         // Save People
         val peopleArray = JSONArray()
@@ -30,6 +38,8 @@ class AppStorage(context: Context) {
             obj.put("color", p.color)
             obj.put("emoji", p.emoji)
             obj.put("phoneNumber", p.phoneNumber ?: "")
+            obj.put("upiId", p.upiId ?: "")
+            obj.put("isCurrentUser", p.isCurrentUser)
             peopleArray.put(obj)
         }
         editor.putString("people_json", peopleArray.toString())
@@ -50,6 +60,25 @@ class AppStorage(context: Context) {
             itemsArray.put(obj)
         }
         editor.putString("items_json", itemsArray.toString())
+
+        // Save Trip Expenses
+        val tripArray = JSONArray()
+        for (exp in state.tripExpenses) {
+            val obj = JSONObject()
+            obj.put("id", exp.id)
+            obj.put("title", exp.title)
+            obj.put("amount", exp.amount)
+            obj.put("paidByPersonId", exp.paidByPersonId)
+            obj.put("category", exp.category)
+            obj.put("timestamp", exp.timestamp)
+            val splitters = JSONArray()
+            for (pid in exp.splitWithPersonIds) {
+                splitters.put(pid)
+            }
+            obj.put("splitWithPersonIds", splitters)
+            tripArray.put(obj)
+        }
+        editor.putString("trip_expenses_json", tripArray.toString())
 
         // Save Tax, Tip, and Discount
         val ttObj = JSONObject()
@@ -90,7 +119,8 @@ class AppStorage(context: Context) {
                             name = obj.getString("name"),
                             color = obj.getLong("color"),
                             emoji = obj.optString("emoji", "😎"),
-                            phoneNumber = obj.optString("phoneNumber", "").ifEmpty { null }
+                            phoneNumber = obj.optString("phoneNumber", "").ifEmpty { null },
+                            upiId = obj.optString("upiId", "").ifEmpty { null }
                         )
                     )
                 }
@@ -146,13 +176,51 @@ class AppStorage(context: Context) {
                 )
             }
 
+            val modeStr = prefs.getString("calculation_mode", null)
+            val mode = try { CalculationMode.valueOf(modeStr ?: "") } catch (e: Exception) { CalculationMode.SINGLE_BILL }
+            val tripName = prefs.getString("trip_name", "Group Trip") ?: "Group Trip"
+
+            val tripExpensesJson = prefs.getString("trip_expenses_json", null)
+            val tripExpenses = mutableListOf<TripExpense>()
+            if (!tripExpensesJson.isNullOrEmpty()) {
+                val array = JSONArray(tripExpensesJson)
+                for (i in 0 until array.length()) {
+                    val obj = array.getJSONObject(i)
+                    val splittersSet = mutableSetOf<String>()
+                    val splittersArray = obj.optJSONArray("splitWithPersonIds")
+                    if (splittersArray != null) {
+                        for (j in 0 until splittersArray.length()) {
+                            splittersSet.add(splittersArray.getString(j))
+                        }
+                    }
+                    tripExpenses.add(
+                        TripExpense(
+                            id = obj.getString("id"),
+                            title = obj.getString("title"),
+                            amount = obj.getDouble("amount"),
+                            paidByPersonId = obj.getString("paidByPersonId"),
+                            splitWithPersonIds = splittersSet,
+                            category = obj.optString("category", "General"),
+                            timestamp = obj.optLong("timestamp", System.currentTimeMillis())
+                        )
+                    )
+                }
+            }
+
+            val activeLobbyCode = prefs.getString("active_lobby_code", null)
+            val currentUserId = prefs.getString("current_user_id", null)
             val paidByPersonId = prefs.getString("paid_by_person_id", null)
             val isDarkMode = prefs.getBoolean("is_dark_mode", false)
 
             return SplitterUiState(
                 currentStep = step,
+                calculationMode = mode,
+                tripName = tripName,
+                activeLobbyCode = activeLobbyCode,
+                currentUserId = currentUserId,
                 people = people,
                 items = items,
+                tripExpenses = tripExpenses,
                 taxAndTip = taxAndTip,
                 isScanning = false,
                 paidByPersonId = paidByPersonId,
@@ -372,5 +440,220 @@ class AppStorage(context: Context) {
             e.printStackTrace()
         }
         return list
+    }
+
+    fun saveLobbies(lobbies: List<LobbySession>) {
+        val array = JSONArray()
+        for (session in lobbies) {
+            val obj = JSONObject()
+            obj.put("code", session.code)
+            obj.put("name", session.name)
+            obj.put("hostPersonId", session.hostPersonId)
+            obj.put("createdAt", session.createdAt)
+
+            val membersArr = JSONArray()
+            for (p in session.members) {
+                val pObj = JSONObject()
+                pObj.put("id", p.id)
+                pObj.put("name", p.name)
+                pObj.put("color", p.color)
+                pObj.put("emoji", p.emoji)
+                pObj.put("phoneNumber", p.phoneNumber ?: "")
+                pObj.put("upiId", p.upiId ?: "")
+                membersArr.put(pObj)
+            }
+            obj.put("members", membersArr)
+
+            val expensesArr = JSONArray()
+            for (exp in session.expenses) {
+                val eObj = JSONObject()
+                eObj.put("id", exp.id)
+                eObj.put("title", exp.title)
+                eObj.put("amount", exp.amount)
+                eObj.put("paidByPersonId", exp.paidByPersonId)
+                eObj.put("category", exp.category)
+                eObj.put("timestamp", exp.timestamp)
+                val splitters = JSONArray()
+                for (pid in exp.splitWithPersonIds) {
+                    splitters.put(pid)
+                }
+                eObj.put("splitWithPersonIds", splitters)
+                expensesArr.put(eObj)
+            }
+            obj.put("expenses", expensesArr)
+
+            val settlementsArr = JSONArray()
+            for (set in session.settlements) {
+                val sObj = JSONObject()
+                sObj.put("id", set.id)
+                sObj.put("lobbyCode", set.lobbyCode)
+                sObj.put("fromPersonId", set.fromPersonId)
+                sObj.put("toPersonId", set.toPersonId)
+                sObj.put("amount", set.amount)
+                sObj.put("timestamp", set.timestamp)
+                sObj.put("transactionRef", set.transactionRef ?: "")
+                settlementsArr.put(sObj)
+            }
+            obj.put("settlements", settlementsArr)
+
+            val activitiesArr = JSONArray()
+            for (act in session.activities) {
+                val aObj = JSONObject()
+                aObj.put("id", act.id)
+                aObj.put("lobbyCode", act.lobbyCode)
+                aObj.put("actorPersonId", act.actorPersonId)
+                aObj.put("actorName", act.actorName)
+                aObj.put("actionType", act.actionType)
+                aObj.put("description", act.description)
+                aObj.put("amount", act.amount)
+                aObj.put("timestamp", act.timestamp)
+                activitiesArr.put(aObj)
+            }
+            obj.put("activities", activitiesArr)
+
+            array.put(obj)
+        }
+        prefs.edit().putString("saved_lobbies_json", array.toString()).apply()
+    }
+
+    fun loadLobbies(): List<LobbySession> {
+        val json = prefs.getString("saved_lobbies_json", null) ?: return emptyList()
+        val list = mutableListOf<LobbySession>()
+        try {
+            val array = JSONArray(json)
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                val code = obj.getString("code")
+                val name = obj.getString("name")
+                val hostPersonId = obj.getString("hostPersonId")
+                val createdAt = obj.optLong("createdAt", System.currentTimeMillis())
+
+                val membersArr = obj.getJSONArray("members")
+                val members = mutableListOf<Person>()
+                for (mIdx in 0 until membersArr.length()) {
+                    val pObj = membersArr.getJSONObject(mIdx)
+                    members.add(
+                        Person(
+                            id = pObj.getString("id"),
+                            name = pObj.getString("name"),
+                            color = pObj.getLong("color"),
+                            emoji = pObj.optString("emoji", "😎"),
+                            phoneNumber = pObj.optString("phoneNumber", "").ifEmpty { null },
+                            upiId = pObj.optString("upiId", "").ifEmpty { null }
+                        )
+                    )
+                }
+
+                val expensesArr = obj.optJSONArray("expenses")
+                val expenses = mutableListOf<TripExpense>()
+                if (expensesArr != null) {
+                    for (eIdx in 0 until expensesArr.length()) {
+                        val eObj = expensesArr.getJSONObject(eIdx)
+                        val splittersSet = mutableSetOf<String>()
+                        val splittersArray = eObj.optJSONArray("splitWithPersonIds")
+                        if (splittersArray != null) {
+                            for (sIdx in 0 until splittersArray.length()) {
+                                splittersSet.add(splittersArray.getString(sIdx))
+                            }
+                        }
+                        expenses.add(
+                            TripExpense(
+                                id = eObj.getString("id"),
+                                title = eObj.getString("title"),
+                                amount = eObj.getDouble("amount"),
+                                paidByPersonId = eObj.getString("paidByPersonId"),
+                                splitWithPersonIds = splittersSet,
+                                category = eObj.optString("category", "General"),
+                                timestamp = eObj.optLong("timestamp", System.currentTimeMillis())
+                            )
+                        )
+                    }
+                }
+
+                val settlementsArr = obj.optJSONArray("settlements")
+                val settlements = mutableListOf<com.example.splixter.data.TripSettlementRecord>()
+                if (settlementsArr != null) {
+                    for (sIdx in 0 until settlementsArr.length()) {
+                        val sObj = settlementsArr.getJSONObject(sIdx)
+                        settlements.add(
+                            com.example.splixter.data.TripSettlementRecord(
+                                id = sObj.getString("id"),
+                                lobbyCode = sObj.getString("lobbyCode"),
+                                fromPersonId = sObj.getString("fromPersonId"),
+                                toPersonId = sObj.getString("toPersonId"),
+                                amount = sObj.getDouble("amount"),
+                                timestamp = sObj.optLong("timestamp", System.currentTimeMillis()),
+                                transactionRef = sObj.optString("transactionRef", "").ifEmpty { null }
+                            )
+                        )
+                    }
+                }
+
+                val activitiesArr = obj.optJSONArray("activities")
+                val activities = mutableListOf<com.example.splixter.data.TripActivity>()
+                if (activitiesArr != null) {
+                    for (aIdx in 0 until activitiesArr.length()) {
+                        val aObj = activitiesArr.getJSONObject(aIdx)
+                        activities.add(
+                            com.example.splixter.data.TripActivity(
+                                id = aObj.getString("id"),
+                                lobbyCode = aObj.getString("lobbyCode"),
+                                actorPersonId = aObj.getString("actorPersonId"),
+                                actorName = aObj.getString("actorName"),
+                                actionType = aObj.getString("actionType"),
+                                description = aObj.getString("description"),
+                                amount = aObj.optDouble("amount", 0.0),
+                                timestamp = aObj.optLong("timestamp", System.currentTimeMillis())
+                            )
+                        )
+                    }
+                }
+
+                list.add(
+                    LobbySession(
+                        code = code,
+                        name = name,
+                        hostPersonId = hostPersonId,
+                        members = members,
+                        expenses = expenses,
+                        settlements = settlements,
+                        activities = activities,
+                        createdAt = createdAt
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return list
+    }
+
+    fun saveUserProfile(profile: UserProfile) {
+        val obj = JSONObject().apply {
+            put("id", profile.id)
+            put("name", profile.name)
+            put("color", profile.color)
+            put("emoji", profile.emoji)
+            put("phoneNumber", profile.phoneNumber ?: "")
+            put("upiId", profile.upiId ?: "")
+        }
+        prefs.edit().putString("user_profile_json", obj.toString()).apply()
+    }
+
+    fun loadUserProfile(): UserProfile? {
+        val json = prefs.getString("user_profile_json", null) ?: return null
+        return try {
+            val obj = JSONObject(json)
+            UserProfile(
+                id = obj.optString("id", java.util.UUID.randomUUID().toString()),
+                name = obj.getString("name"),
+                color = obj.optLong("color", 0xFF6C5CE7),
+                emoji = obj.optString("emoji", "😎"),
+                phoneNumber = obj.optString("phoneNumber", "").ifEmpty { null },
+                upiId = obj.optString("upiId", "").ifEmpty { null }
+            )
+        } catch (e: Exception) {
+            null
+        }
     }
 }

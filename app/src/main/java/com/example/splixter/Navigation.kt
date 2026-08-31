@@ -27,10 +27,15 @@ import com.example.splixter.ui.SplitterViewModel
 import com.example.splixter.ui.components.bounceClick
 import com.example.splixter.ui.components.sliceShatter
 import com.example.splixter.ui.screens.ItemAssignmentScreen
+import com.example.splixter.ui.screens.LobbyHubScreen
+import com.example.splixter.ui.screens.ModeSelectionScreen
 import com.example.splixter.ui.screens.PeopleSetupScreen
 import com.example.splixter.ui.screens.ReceiptSummaryScreen
 import com.example.splixter.ui.screens.ScanBillScreen
 import com.example.splixter.ui.screens.SplashScreen
+import com.example.splixter.ui.screens.TripExpensesScreen
+import com.example.splixter.ui.screens.TripSummaryScreen
+import com.example.splixter.ui.screens.UserProfileSetupScreen
 
 @Composable
 fun MainNavigation(splitterViewModel: SplitterViewModel = viewModel()) {
@@ -107,9 +112,24 @@ fun MainNavigation(splitterViewModel: SplitterViewModel = viewModel()) {
                     modifier = Modifier.sliceShatter(progress = progress, pieceCount = 12)
                 )
             }
-            AppStep.PEOPLE -> {
+            AppStep.USER_PROFILE_SETUP -> {
+                UserProfileSetupScreen(uiState = uiState, viewModel = splitterViewModel)
+            }
+            AppStep.MODE_SELECTION -> {
                 if (step == uiState.currentStep) {
                     BackHandler { splitterViewModel.setStep(AppStep.SPLASH) }
+                }
+                ModeSelectionScreen(uiState = uiState, viewModel = splitterViewModel)
+            }
+            AppStep.LOBBY_HUB -> {
+                if (step == uiState.currentStep) {
+                    BackHandler { splitterViewModel.setStep(AppStep.MODE_SELECTION) }
+                }
+                LobbyHubScreen(uiState = uiState, viewModel = splitterViewModel)
+            }
+            AppStep.PEOPLE -> {
+                if (step == uiState.currentStep) {
+                    BackHandler { splitterViewModel.setStep(AppStep.MODE_SELECTION) }
                 }
                 PeopleSetupScreen(uiState = uiState, viewModel = splitterViewModel)
             }
@@ -130,6 +150,18 @@ fun MainNavigation(splitterViewModel: SplitterViewModel = viewModel()) {
                     BackHandler { splitterViewModel.setStep(AppStep.ASSIGN) }
                 }
                 ReceiptSummaryScreen(uiState = uiState, viewModel = splitterViewModel)
+            }
+            AppStep.TRIP_EXPENSES -> {
+                if (step == uiState.currentStep) {
+                    BackHandler { splitterViewModel.setStep(AppStep.LOBBY_HUB) }
+                }
+                TripExpensesScreen(uiState = uiState, viewModel = splitterViewModel)
+            }
+            AppStep.TRIP_SUMMARY -> {
+                if (step == uiState.currentStep) {
+                    BackHandler { splitterViewModel.setStep(AppStep.TRIP_EXPENSES) }
+                }
+                TripSummaryScreen(uiState = uiState, viewModel = splitterViewModel)
             }
         }
     }

@@ -56,7 +56,7 @@ import com.example.splixter.data.AppStep
 import com.example.splixter.data.PersonBreakdown
 import com.example.splixter.ui.SplitterUiState
 import com.example.splixter.ui.SplitterViewModel
-import com.example.splixter.ui.components.LiquidGlassBackground
+import com.example.splixter.ui.components.AppBackground
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
@@ -398,7 +398,7 @@ fun ReceiptSummaryScreen(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        LiquidGlassBackground {
+        AppBackground {
             Box(modifier = Modifier.fillMaxSize()) {
                 Column(
                 modifier = Modifier
@@ -644,16 +644,16 @@ fun FullExportReceiptCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Subtotal", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF64748B))
-                    Text("₹${String.format(Locale.US, "%.2f", totalSubtotal)}", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF64748B))
+                    Text("Subtotal", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF334155))
+                    Text("₹${String.format(Locale.US, "%.2f", totalSubtotal)}", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF334155))
                 }
                 if (discountAmount > 0.001) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Discount", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF22A85A))
-                        Text("-₹${String.format(Locale.US, "%.2f", discountAmount)}", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF22A85A))
+                        Text("Discount", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF15803D))
+                        Text("-₹${String.format(Locale.US, "%.2f", discountAmount)}", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF15803D))
                     }
                 }
                 if (taxAmount > 0.001) {
@@ -661,8 +661,8 @@ fun FullExportReceiptCard(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Tax", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF64748B))
-                        Text("+₹${String.format(Locale.US, "%.2f", taxAmount)}", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF64748B))
+                        Text("Tax", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF334155))
+                        Text("+₹${String.format(Locale.US, "%.2f", taxAmount)}", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF334155))
                     }
                 }
                 if (tipAmount > 0.001) {
@@ -670,8 +670,8 @@ fun FullExportReceiptCard(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Tip", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF64748B))
-                        Text("+₹${String.format(Locale.US, "%.2f", tipAmount)}", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF64748B))
+                        Text("Tip", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF334155))
+                        Text("+₹${String.format(Locale.US, "%.2f", tipAmount)}", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFF334155))
                     }
                 }
                 if (vatAmount > 0.001) {
@@ -679,8 +679,8 @@ fun FullExportReceiptCard(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Liquor VAT", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFFE11D48))
-                        Text("+₹${String.format(Locale.US, "%.2f", vatAmount)}", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFFE11D48))
+                        Text("Liquor VAT", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFFBE123C))
+                        Text("+₹${String.format(Locale.US, "%.2f", vatAmount)}", fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color(0xFFBE123C))
                     }
                 }
             }
@@ -784,13 +784,13 @@ fun PersonReceiptBlock(
                     text = "$catEmoji ${item.name}",
                     fontFamily = FontFamily.Monospace,
                     fontSize = 13.sp,
-                    color = Color(0xFF555555)
+                    color = Color(0xFF334155)
                 )
                 Text(
                     text = "₹${String.format(Locale.US, "%.2f", costShare)}",
                     fontFamily = FontFamily.Monospace,
                     fontSize = 13.sp,
-                    color = Color(0xFF555555)
+                    color = Color(0xFF334155)
                 )
             }
         }
@@ -807,13 +807,13 @@ fun PersonReceiptBlock(
                     text = "- Discount",
                     fontFamily = FontFamily.Monospace,
                     fontSize = 12.sp,
-                    color = Color(0xFF22A85A)
+                    color = Color(0xFF15803D)
                 )
                 Text(
                     text = "-₹${String.format(Locale.US, "%.2f", totalDiscShare)}",
                     fontFamily = FontFamily.Monospace,
                     fontSize = 12.sp,
-                    color = Color(0xFF22A85A)
+                    color = Color(0xFF15803D)
                 )
             }
         }
@@ -828,13 +828,13 @@ fun PersonReceiptBlock(
                 text = "+ Tax & Tip Share",
                 fontFamily = FontFamily.Monospace,
                 fontSize = 12.sp,
-                color = Color(0xFF475569)
+                color = Color(0xFF334155)
             )
             Text(
                 text = "₹${String.format(Locale.US, "%.2f", breakdown.taxShare + breakdown.tipShare)}",
                 fontFamily = FontFamily.Monospace,
                 fontSize = 12.sp,
-                color = Color(0xFF475569)
+                color = Color(0xFF334155)
             )
         }
 
@@ -849,13 +849,13 @@ fun PersonReceiptBlock(
                     text = "+ Liquor VAT Share",
                     fontFamily = FontFamily.Monospace,
                     fontSize = 12.sp,
-                    color = Color(0xFFE11D48)
+                    color = Color(0xFFBE123C)
                 )
                 Text(
                     text = "₹${String.format(Locale.US, "%.2f", breakdown.vatShare)}",
                     fontFamily = FontFamily.Monospace,
                     fontSize = 12.sp,
-                    color = Color(0xFFE11D48)
+                    color = Color(0xFFBE123C)
                 )
             }
         }

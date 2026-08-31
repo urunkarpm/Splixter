@@ -1,6 +1,11 @@
 package com.example.splixter.ui.screens
 
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,6 +20,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -44,6 +50,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Contacts
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -61,13 +69,13 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.drawBehind
@@ -90,13 +98,21 @@ import com.example.splixter.data.Person
 import com.example.splixter.data.SavedGroup
 import com.example.splixter.ui.SplitterUiState
 import com.example.splixter.ui.SplitterViewModel
-import com.example.splixter.ui.components.LiquidGlassBackground
-import com.example.splixter.ui.components.glassCardColors
-import com.example.splixter.ui.components.glassCardBorder
+import com.example.splixter.ui.components.AppBackground
+import com.example.splixter.ui.components.appCardColors
+import com.example.splixter.ui.components.appCardBorder
 import com.example.splixter.ui.components.bounceClick
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+data class ContactSuggestion(
+    val name: String,
+    val phoneNumber: String? = null
+)
 
 @Composable
 fun PeopleSetupScreen(
@@ -106,6 +122,17 @@ fun PeopleSetupScreen(
     val context = LocalContext.current
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     var nameInput by remember { mutableStateOf("") }
+    var contactSuggestions by remember { mutableStateOf<List<ContactSuggestion>>(emptyList()) }
+    var hasRequestedPermissionOnce by remember { mutableStateOf(false) }
+
+    var hasContactPermission by remember {
+        mutableStateOf(
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.READ_CONTACTS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        )
+    }
     
     val contactPickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.PickContact()
@@ -122,12 +149,37 @@ fun PeopleSetupScreen(
     val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        if (isGranted) {
-            contactPickerLauncher.launch(null)
-        } else {
-            Toast.makeText(context, "Permission denied to read contacts.", Toast.LENGTH_SHORT).show()
+        hasContactPermission = isGranted
+        if (!isGranted) {
+            Toast.makeText(context, "Contact permission denied. You can still type names manually.", Toast.LENGTH_SHORT).show()
         }
     }
+
+    // Dynamic contact search as the user types
+    LaunchedEffect(nameInput, hasContactPermission, uiState.people) {
+        val query = nameInput.trim()
+        if (query.isEmpty()) {
+            contactSuggestions = emptyList()
+        } else if (!hasContactPermission) {
+            contactSuggestions = emptyList()
+            if (!hasRequestedPermissionOnce) {
+                hasRequestedPermissionOnce = true
+                permissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
+            }
+        } else {
+            delay(100) // 100ms debounce
+            val existingNames = uiState.people.map { it.name.lowercase().trim() }.toSet()
+            val existingPhones = uiState.people.mapNotNull { it.phoneNumber?.replace("\\s|-".toRegex(), "") }.toSet()
+
+            val fetched = searchContacts(context, query)
+            contactSuggestions = fetched.filter { suggestion ->
+                val cleanSugPhone = suggestion.phoneNumber?.replace("\\s|-".toRegex(), "")
+                suggestion.name.lowercase().trim() !in existingNames &&
+                    (cleanSugPhone == null || cleanSugPhone !in existingPhones)
+            }
+        }
+    }
+
     var showHistoryDialog by remember { mutableStateOf(false) }
     var showInsightsDialog by remember { mutableStateOf(false) }
     var showSaveGroupDialog by remember { mutableStateOf(false) }
@@ -150,6 +202,14 @@ fun PeopleSetupScreen(
             haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
             viewModel.addPerson(nameInput.trim())
             nameInput = ""
+            contactSuggestions = emptyList()
+        }
+    }
+
+    LaunchedEffect(uiState.userProfile) {
+        if (uiState.people.isEmpty() && uiState.userProfile != null) {
+            val user = viewModel.getCurrentUserPerson()
+            viewModel.addPerson(user.name, user.phoneNumber)
         }
     }
 
@@ -191,11 +251,9 @@ fun PeopleSetupScreen(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        LiquidGlassBackground {
+        AppBackground {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .blur(if (isAnyDialogOpen) 20.dp else 0.dp)
+                modifier = Modifier.fillMaxSize()
             ) {
                 Column(
                 modifier = Modifier
@@ -278,11 +336,11 @@ fun PeopleSetupScreen(
                     }
                 }
 
-                // Name input bar - Redesigned as a unified Glassmorphic capsule
+                // Name input bar - Material 3 Capsule
                 Card(
                     shape = RoundedCornerShape(28.dp),
-                    colors = glassCardColors(isPayee = false),
-                    border = glassCardBorder(isPayee = false),
+                    colors = appCardColors(isPayee = false),
+                    border = appCardBorder(isPayee = false),
                     elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -322,15 +380,10 @@ fun PeopleSetupScreen(
                             )
                         )
                         
-                        // Contacts picker button
+                        // Optional Contacts picker button
                         IconButton(
                             onClick = {
-                                val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
-                                    context,
-                                    android.Manifest.permission.READ_CONTACTS
-                                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                                
-                                if (hasPermission) {
+                                if (hasContactPermission) {
                                     contactPickerLauncher.launch(null)
                                 } else {
                                     permissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
@@ -389,8 +442,174 @@ fun PeopleSetupScreen(
                     }
                 }
 
+                // Dynamic Contact Auto-Suggestions Dropdown Card
+                AnimatedVisibility(
+                    visible = contactSuggestions.isNotEmpty() && nameInput.isNotBlank(),
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = appCardColors(isPayee = false),
+                        border = appCardBorder(isPayee = false),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 6.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PersonSearch,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Matching Contacts",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            contactSuggestions.take(5).forEach { suggestion ->
+                                val initials = suggestion.name.trim().take(1).uppercase()
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                            viewModel.addPerson(suggestion.name, suggestion.phoneNumber)
+                                            nameInput = ""
+                                            contactSuggestions = emptyList()
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(34.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                Brush.linearGradient(
+                                                    listOf(
+                                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                                                        Color(0xFF0EA5E9)
+                                                    )
+                                                )
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = initials,
+                                            color = Color.White,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(12.dp))
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = suggestion.name,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        if (!suggestion.phoneNumber.isNullOrBlank()) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Phone,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                    modifier = Modifier.size(11.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(3.dp))
+                                                Text(
+                                                    text = suggestion.phoneNumber,
+                                                    fontSize = 11.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = "Add",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Prompt to grant contacts permission if user typed something and permission is not granted
+                AnimatedVisibility(
+                    visible = !hasContactPermission && nameInput.isNotBlank(),
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Card(
+                        shape = RoundedCornerShape(16.dp),
+                        colors = appCardColors(isPayee = false),
+                        border = appCardBorder(isPayee = false),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 4.dp)
+                            .clickable { permissionLauncher.launch(android.Manifest.permission.READ_CONTACTS) }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Contacts,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Tap to enable instant contact auto-suggestions",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                }
+
                 // Quick-add suggestions from history
-                if (quickAddNames.isNotEmpty()) {
+                if (nameInput.isBlank() && quickAddNames.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 20.dp),
@@ -500,21 +719,38 @@ fun PeopleSetupScreen(
                     )
                     val payer = uiState.people.find { it.id == uiState.paidByPersonId }
                     if (payer != null) {
-                        Text(
-                            text = "👑 ${payer.name} paid",
-                            fontSize = 12.sp,
-                            color = Color(0xFFFFB703),
-                            fontWeight = FontWeight.SemiBold
-                        )
+                        Surface(
+                            color = Color(0xFF10B981).copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = Color(0xFF10B981),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Payer: ${payer.name}",
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF10B981),
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
                     }
                 }
 
                 if (uiState.people.isNotEmpty() && uiState.paidByPersonId == null) {
                     Text(
-                        text = "Tap 👑 on a card to mark who paid",
+                        text = "Tap checkmark on a participant to designate who paid",
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                     )
                 }
@@ -528,16 +764,16 @@ fun PeopleSetupScreen(
                             .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        val outlineColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                        val outlineColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                         Card(
-                            shape = RoundedCornerShape(24.dp),
+                            shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.45f)
                             ),
                             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(220.dp)
+                                .height(200.dp)
                                 .drawBehind {
                                     val stroke = Stroke(
                                         width = 1.5.dp.toPx(),
@@ -546,7 +782,7 @@ fun PeopleSetupScreen(
                                     drawRoundRect(
                                         color = outlineColor,
                                         style = stroke,
-                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(24.dp.toPx())
+                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(18.dp.toPx())
                                     )
                                 }
                         ) {
@@ -559,26 +795,31 @@ fun PeopleSetupScreen(
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(60.dp)
-                                        .clip(CircleShape)
+                                        .size(48.dp)
+                                        .clip(RoundedCornerShape(12.dp))
                                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("👥", fontSize = 32.sp)
+                                    Icon(
+                                        imageVector = Icons.Default.PersonAdd,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(24.dp)
+                                    )
                                 }
-                                Spacer(modifier = Modifier.height(16.dp))
+                                Spacer(modifier = Modifier.height(14.dp))
                                 Text(
-                                    text = "Your split group is empty",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.ExtraBold,
+                                    text = "No participants added",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                                Spacer(modifier = Modifier.height(6.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Add participants by entering a name above\nor load a saved group preset",
+                                    text = "Add names above or load a saved group",
                                     fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                    fontWeight = FontWeight.Normal,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     textAlign = TextAlign.Center
                                 )
                             }
@@ -615,28 +856,27 @@ fun PeopleSetupScreen(
                         if (uiState.people.size < 2) {
                             Toast.makeText(context, "Add at least 2 people to split!", Toast.LENGTH_SHORT).show()
                         } else {
-                            viewModel.setStep(AppStep.SCAN)
+                            if (uiState.calculationMode == com.example.splixter.data.CalculationMode.TRIP_EXPENSE) {
+                                viewModel.setStep(AppStep.TRIP_EXPENSES)
+                            } else {
+                                viewModel.setStep(AppStep.SCAN)
+                            }
                         }
                     },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     contentPadding = PaddingValues(),
                     interactionSource = continueBtnInteractionSource,
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 16.dp)
-                        .height(56.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .bounceClick(continueBtnInteractionSource)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    Color(0xFF0EA5E9)
-                                )
-                            )
-                        ),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+                        .height(52.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .bounceClick(continueBtnInteractionSource),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -644,15 +884,16 @@ fun PeopleSetupScreen(
                     ) {
                         Text(
                             text = "Continue with ${uiState.people.size} ${if (uiState.people.size == 1) "person" else "people"}",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null,
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
@@ -675,21 +916,21 @@ fun PersonAvatarCard(
     val personColor = Color(person.color)
 
     val activeBorder = if (isPayee) {
-        BorderStroke(2.dp, Color(0xFF1DB954).copy(alpha = 0.8f))
+        BorderStroke(1.5.dp, Color(0xFF10B981))
     } else {
-        BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+        BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
     
     val activeColors = CardDefaults.cardColors(
         containerColor = if (isPayee) {
-            Color(0xFF1DB954).copy(alpha = 0.08f).compositeOver(MaterialTheme.colorScheme.surface.copy(alpha = 0.65f))
+            Color(0xFF10B981).copy(alpha = 0.08f).compositeOver(MaterialTheme.colorScheme.surface.copy(alpha = 0.65f))
         } else {
             MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)
         }
     )
 
     Card(
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = activeColors,
         border = activeBorder,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -701,36 +942,12 @@ fun PersonAvatarCard(
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar circle with border and crown overlay
-            Box(
-                modifier = Modifier.size(48.dp),
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(CircleShape)
-                        .background(personColor.copy(alpha = 0.2f))
-                        .border(1.5.dp, personColor, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = person.name.take(1).uppercase(),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = personColor
-                    )
-                }
-                if (isPayee) {
-                    Text(
-                        text = "👑",
-                        fontSize = 14.sp,
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .offset(x = 2.dp, y = (-2).dp)
-                    )
-                }
-            }
+            com.example.splixter.ui.components.MonogramAvatar(
+                name = person.name,
+                color = person.color,
+                size = 38.dp,
+                fontSize = 14.sp
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -740,43 +957,43 @@ fun PersonAvatarCard(
                     Text(
                         text = person.name,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
+                        fontSize = 15.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f, fill = false)
                     )
-                    if (person.phoneNumber != null) {
+                    if (person.isCurrentUser) {
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "📞",
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                if (isPayee) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFF1DB954).copy(alpha = 0.15f))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                                .padding(horizontal = 5.dp, vertical = 1.dp)
                         ) {
                             Text(
-                                text = "👑 Payer",
-                                fontSize = 11.sp,
-                                color = Color(0xFF1DB954),
-                                fontWeight = FontWeight.ExtraBold
+                                text = "You",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                if (isPayee) {
+                    Text(
+                        text = "Payer",
+                        fontSize = 12.sp,
+                        color = Color(0xFF10B981),
+                        fontWeight = FontWeight.SemiBold
+                    )
                 } else {
                     Text(
-                        text = if (!hasPayeeSelected) "Tap check to mark as payer" else "Participant",
+                        text = if (!hasPayeeSelected) "Tap checkmark to designate payer" else "Participant",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Normal
                     )
                 }
             }
@@ -786,15 +1003,15 @@ fun PersonAvatarCard(
             // Payer selection toggle button on the right
             Box(
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
                     .background(
-                        if (isPayee) Color(0xFF1DB954)
+                        if (isPayee) Color(0xFF10B981)
                         else MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
                     )
                     .border(
-                        width = if (isPayee) 0.dp else 1.5.dp,
-                        color = if (isPayee) Color.Transparent else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                        width = if (isPayee) 0.dp else 1.dp,
+                        color = if (isPayee) Color.Transparent else MaterialTheme.colorScheme.outlineVariant,
                         shape = CircleShape
                     )
                     .clickable {
@@ -806,28 +1023,25 @@ fun PersonAvatarCard(
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = if (isPayee) "Payer" else "Mark as payer",
-                    tint = if (isPayee) Color.White else MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                    modifier = Modifier.size(18.dp)
+                    tint = if (isPayee) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
 
             // Remove button
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .clickable {
-                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                        onRemove()
-                    },
-                contentAlignment = Alignment.Center
+            IconButton(
+                onClick = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    onRemove()
+                },
+                modifier = Modifier.size(32.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Remove",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -846,17 +1060,17 @@ fun GroupPresetCard(
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
         ),
         border = BorderStroke(
             1.dp,
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
-            .width(170.dp)
+            .width(160.dp)
             .clickable { onClick() }
     ) {
         Column(
@@ -868,7 +1082,12 @@ fun GroupPresetCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "📁", fontSize = 14.sp)
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = group.name,
@@ -1358,6 +1577,86 @@ fun HistoryDialog(
         }
     }
 }
+
+suspend fun searchContacts(context: android.content.Context, query: String): List<ContactSuggestion> =
+    withContext(Dispatchers.IO) {
+        if (query.isBlank()) return@withContext emptyList()
+        val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.READ_CONTACTS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!hasPermission) return@withContext emptyList()
+
+        val results = mutableListOf<ContactSuggestion>()
+        val seen = mutableSetOf<String>()
+
+        try {
+            val filterUri = android.net.Uri.withAppendedPath(
+                android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI,
+                android.net.Uri.encode(query.trim())
+            )
+            val projection = arrayOf(
+                android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
+            )
+            context.contentResolver.query(
+                filterUri,
+                projection,
+                null,
+                null,
+                "${android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC LIMIT 15"
+            )?.use { cursor ->
+                val nameIndex = cursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val numberIndex = cursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+                while (cursor.moveToNext() && results.size < 8) {
+                    val name = if (nameIndex >= 0) cursor.getString(nameIndex) else null
+                    val number = if (numberIndex >= 0) cursor.getString(numberIndex) else null
+                    if (!name.isNullOrBlank()) {
+                        val key = "${name.trim().lowercase()}-${number?.trim().orEmpty()}"
+                        if (seen.add(key)) {
+                            results.add(ContactSuggestion(name = name.trim(), phoneNumber = number?.trim()))
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Log / ignore
+        }
+
+        // If no phone results matched, search basic contacts list as well
+        if (results.isEmpty()) {
+            try {
+                val filterContactUri = android.net.Uri.withAppendedPath(
+                    android.provider.ContactsContract.Contacts.CONTENT_FILTER_URI,
+                    android.net.Uri.encode(query.trim())
+                )
+                val contactProjection = arrayOf(
+                    android.provider.ContactsContract.Contacts.DISPLAY_NAME
+                )
+                context.contentResolver.query(
+                    filterContactUri,
+                    contactProjection,
+                    null,
+                    null,
+                    "${android.provider.ContactsContract.Contacts.DISPLAY_NAME} ASC LIMIT 10"
+                )?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME)
+                    while (cursor.moveToNext() && results.size < 8) {
+                        val name = if (nameIndex >= 0) cursor.getString(nameIndex) else null
+                        if (!name.isNullOrBlank()) {
+                            if (seen.add(name.trim().lowercase())) {
+                                results.add(ContactSuggestion(name = name.trim(), phoneNumber = null))
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+
+        results
+    }
 
 fun getContactDetails(context: android.content.Context, contactUri: android.net.Uri): Pair<String, String?>? {
     var name: String? = null
