@@ -782,8 +782,12 @@ private fun SettlementCard(
                         OutlinedButton(
                             onClick = {
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                val codeMsg = if (!activeLobbyCode.isNullOrBlank()) "\n2. Enter Group Code: $activeLobbyCode\n3. Select your name '${settlement.fromPerson.name}' to claim your expenses!" else ""
-                                val inviteMsg = "Hey ${settlement.fromPerson.name}! You have a pending settlement of ₹${String.format(Locale.US, "%.2f", settlement.amount)} to ${settlement.toPerson.name} for $tripName.\n\n📲 Join the group on Splixter app to view and settle:\n1. Download the latest Splixter build: https://github.com/urunkarpm/Splixter/releases/latest$codeMsg"
+                                val codeMsg = if (!activeLobbyCode.isNullOrBlank()) {
+                                    "\n2. Open app\n3. Click on 'Trip & Group Expense' -> 'Trip Hub'\n4. Join with 6-Digit Code: $activeLobbyCode\n5. Select your name '${settlement.fromPerson.name}' to claim your expenses!"
+                                } else {
+                                    "\n2. Open app\n3. Select your name '${settlement.fromPerson.name}' to claim your expenses!"
+                                }
+                                val inviteMsg = "Hey ${settlement.fromPerson.name}! You have a pending settlement of ₹${String.format(Locale.US, "%.2f", settlement.amount)} to ${settlement.toPerson.name} for $tripName.\n\n📲 Join the group on Splixter app to view and settle:\n1. Download latest Splixter build: https://github.com/urunkarpm/Splixter/releases/latest$codeMsg"
                                 val sendIntent = Intent(Intent.ACTION_SEND).apply {
                                     putExtra(Intent.EXTRA_TEXT, inviteMsg)
                                     type = "text/plain"
