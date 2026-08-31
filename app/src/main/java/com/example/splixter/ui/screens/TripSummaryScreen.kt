@@ -84,8 +84,8 @@ fun TripSummaryScreen(
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
-    val balances = remember(uiState.tripExpenses, uiState.people) { viewModel.calculateTripBalances() }
-    val rawSettlements = remember(uiState.tripExpenses, uiState.people) { viewModel.calculateTripSettlements() }
+    val balances = remember(uiState.tripExpenses, uiState.people, uiState.tripSettlements) { viewModel.calculateTripBalances() }
+    val rawSettlements = remember(uiState.tripExpenses, uiState.people, uiState.tripSettlements) { viewModel.calculateTripSettlements() }
     val totalTripAmount = uiState.tripExpenses.sumOf { it.amount }
 
     val currentUser = uiState.people.find { it.isCurrentUser }

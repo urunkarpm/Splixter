@@ -120,7 +120,8 @@ class AppStorage(context: Context) {
                             color = obj.getLong("color"),
                             emoji = obj.optString("emoji", "😎"),
                             phoneNumber = obj.optString("phoneNumber", "").ifEmpty { null },
-                            upiId = obj.optString("upiId", "").ifEmpty { null }
+                            upiId = obj.optString("upiId", "").ifEmpty { null },
+                            isCurrentUser = obj.optBoolean("isCurrentUser", false)
                         )
                     )
                 }
@@ -234,6 +235,8 @@ class AppStorage(context: Context) {
     fun clearState() {
         val historyJson = prefs.getString("history_json", null)
         val savedGroupsJson = prefs.getString("saved_groups_json", null)
+        val userProfileJson = prefs.getString("user_profile_json", null)
+        val savedLobbiesJson = prefs.getString("saved_lobbies_json", null)
         val isDarkMode = prefs.getBoolean("is_dark_mode", false)
         prefs.edit().clear().apply()
         val editor = prefs.edit()
@@ -242,6 +245,12 @@ class AppStorage(context: Context) {
         }
         if (savedGroupsJson != null) {
             editor.putString("saved_groups_json", savedGroupsJson)
+        }
+        if (userProfileJson != null) {
+            editor.putString("user_profile_json", userProfileJson)
+        }
+        if (savedLobbiesJson != null) {
+            editor.putString("saved_lobbies_json", savedLobbiesJson)
         }
         editor.putBoolean("is_dark_mode", isDarkMode)
         editor.apply()

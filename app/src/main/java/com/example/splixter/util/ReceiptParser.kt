@@ -8,10 +8,9 @@ object ReceiptParser {
     // Flexible regex matching numbers with optional decimals or currency prefixes/suffixes
     private val PRICE_REGEX = Regex("""(?:\$|₹|Rs\.?\s*)?(\d{1,5}(?:\.\d{1,2})?)(?:/-)?\b""", RegexOption.IGNORE_CASE)
     
-    private val IGNORE_WORDS = setOf(
-        "total", "subtotal", "tax", "gst", "cgst", "sgst", "cash", "change", "upi", "visa", "mastercard", 
-        "balance", "due", "gratuity", "receipt", "thank", "you", "date", "time", "table", "server", 
-        "guest", "check", "bill", "invoice", "net", "amount", "welcome", "tel", "phone"
+    private val IGNORE_PATTERN = Regex(
+        """\b(?:total|subtotal|grand total|tax|gst|cgst|sgst|vat|cash|change|upi|visa|mastercard|balance|due|gratuity|receipt|thank you|date|time|table|server|guest|check|invoice|net amount|amount due|welcome|tel|phone|fssai)\b""",
+        RegexOption.IGNORE_CASE
     )
 
     fun parseReceiptText(text: String): List<BillItem> {
@@ -22,8 +21,7 @@ object ReceiptParser {
             val trimmed = line.trim()
             if (trimmed.length < 2) continue
 
-            val lowerLine = trimmed.lowercase(Locale.ROOT)
-            if (IGNORE_WORDS.any { lowerLine.contains(it) }) {
+            if (IGNORE_PATTERN.containsMatchIn(trimmed)) {
                 continue
             }
 

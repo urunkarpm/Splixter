@@ -29,7 +29,7 @@ class AppUpdateService {
     companion object {
         const val GITHUB_REPO_API = "https://api.github.com/repos/urunkarpm/Splixter/releases/latest"
         const val GITHUB_RELEASES_WEB = "https://github.com/urunkarpm/Splixter/releases"
-        const val CURRENT_APP_VERSION = "2.0.0"
+        const val CURRENT_APP_VERSION = "2.1.0"
     }
 
     suspend fun checkForUpdates(currentVersion: String = CURRENT_APP_VERSION): AppUpdateResult = withContext(Dispatchers.IO) {

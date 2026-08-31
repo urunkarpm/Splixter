@@ -17,4 +17,5 @@ secrets.properties
 /captures
 .externalNativeBuild
 .cxx
+*.apk
 

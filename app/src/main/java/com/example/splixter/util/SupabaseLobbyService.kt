@@ -387,7 +387,12 @@ class SupabaseLobbyService {
     }.flowOn(Dispatchers.IO)
 
     private fun readResponse(conn: HttpURLConnection): String {
-        val reader = BufferedReader(InputStreamReader(conn.inputStream, "UTF-8"))
+        val stream = try {
+            if (conn.responseCode in 200..299) conn.inputStream else (conn.errorStream ?: conn.inputStream)
+        } catch (e: Exception) {
+            conn.errorStream ?: return ""
+        } ?: return ""
+        val reader = BufferedReader(InputStreamReader(stream, "UTF-8"))
         val sb = StringBuilder()
         var line: String?
         while (reader.readLine().also { line = it } != null) {

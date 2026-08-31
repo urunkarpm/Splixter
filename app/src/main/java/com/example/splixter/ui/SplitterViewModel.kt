@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -73,17 +74,17 @@ class SplitterViewModel : ViewModel() {
 
     /** Update state immediately on the main thread, then debounce-save to disk. */
     private fun updateState(immediate: Boolean = false, transform: (SplitterUiState) -> SplitterUiState) {
-        _uiState.update { transform(it) }
+        val newState = _uiState.updateAndGet { transform(it) }
         if (immediate) {
             saveJob?.cancel()
             viewModelScope.launch(Dispatchers.IO) {
-                appStorage?.saveState(_uiState.value)
+                appStorage?.saveState(newState)
             }
         } else {
             saveJob?.cancel()
             saveJob = viewModelScope.launch(Dispatchers.IO) {
                 delay(400) // debounce: only write after 400ms of inactivity
-                appStorage?.saveState(_uiState.value)
+                appStorage?.saveState(newState)
             }
         }
     }
@@ -218,9 +219,11 @@ class SplitterViewModel : ViewModel() {
         if (state.people.isEmpty() || state.items.isEmpty()) return
         val totalAmount = calculateBreakdown().sumOf { it.grandTotal }
         val recordId = state.currentBillId
+        val existingRecord = state.history.find { it.id == recordId }
+        val timestamp = existingRecord?.timestamp ?: System.currentTimeMillis()
         val newRecord = BillHistoryRecord(
             id = recordId,
-            timestamp = System.currentTimeMillis(),
+            timestamp = timestamp,
             people = state.people,
             items = state.items,
             taxAndTip = state.taxAndTip,
@@ -241,6 +244,7 @@ class SplitterViewModel : ViewModel() {
         updateState { s ->
             s.copy(
                 currentBillId = record.id,
+                calculationMode = CalculationMode.SINGLE_BILL,
                 currentStep = AppStep.PEOPLE,
                 people = record.people,
                 items = record.items,
@@ -251,11 +255,12 @@ class SplitterViewModel : ViewModel() {
     }
 
     fun deleteHistoryRecord(recordId: String) {
-        _uiState.update { s ->
-            s.copy(history = s.history.filterNot { it.id == recordId })
+        val updatedHistory = _uiState.value.history.filterNot { it.id == recordId }
+        updateState { s ->
+            s.copy(history = updatedHistory)
         }
         viewModelScope.launch(Dispatchers.IO) {
-            appStorage?.saveHistory(_uiState.value.history)
+            appStorage?.saveHistory(updatedHistory)
         }
     }
 
@@ -465,12 +470,15 @@ class SplitterViewModel : ViewModel() {
         val currentDarkMode = _uiState.value.isDarkMode
         val currentProfile = _uiState.value.userProfile
         val currentLobbies = _uiState.value.savedLobbies
+        val currentMode = _uiState.value.calculationMode
         val initialPeople = if (currentProfile != null) listOf(getCurrentUserPerson()) else emptyList()
+        val targetStep = if (currentMode == CalculationMode.TRIP_EXPENSE) AppStep.LOBBY_HUB else AppStep.PEOPLE
         viewModelScope.launch(Dispatchers.IO) { appStorage?.clearState() }
         updateState(immediate = true) {
             SplitterUiState(
                 currentBillId = UUID.randomUUID().toString(),
-                currentStep = AppStep.PEOPLE,
+                currentStep = targetStep,
+                calculationMode = currentMode,
                 userProfile = currentProfile,
                 people = initialPeople,
                 history = currentHistory,
@@ -492,19 +500,28 @@ class SplitterViewModel : ViewModel() {
 
     fun loadSavedGroup(groupId: String) {
         val group = _uiState.value.savedGroups.find { it.id == groupId } ?: return
+        val profile = _uiState.value.userProfile
+        val currentId = _uiState.value.currentUserId ?: profile?.id
+        val mappedMembers = group.members.map { m ->
+            val isUser = (currentId != null && m.id == currentId) ||
+                (profile != null && (m.id == profile.id || m.name.equals(profile.name, ignoreCase = true)))
+            m.copy(isCurrentUser = isUser)
+        }
         updateState(immediate = true) { s ->
             s.copy(
-                people = group.members,
+                people = mappedMembers,
                 paidByPersonId = null
             )
         }
     }
 
     fun deleteSavedGroup(groupId: String) {
+        val updated = _uiState.value.savedGroups.filterNot { it.id == groupId }
         updateState { s ->
-            val updated = s.savedGroups.filterNot { it.id == groupId }
-            appStorage?.saveGroups(updated)
             s.copy(savedGroups = updated)
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            appStorage?.saveGroups(updated)
         }
     }
 
@@ -622,6 +639,9 @@ class SplitterViewModel : ViewModel() {
     // --- Trip Expense Splitter Methods ---
 
     fun setCalculationMode(mode: CalculationMode) {
+        if (mode == CalculationMode.SINGLE_BILL) {
+            stopCloudSync()
+        }
         updateState(immediate = true) { it.copy(calculationMode = mode) }
     }
 
@@ -661,7 +681,7 @@ class SplitterViewModel : ViewModel() {
         } else null
 
         updateState { s ->
-            val newExpenses = listOf(newExpense) + s.tripExpenses.filterNot { it.id == newExpense.id }
+            val newExpenses = listOf(newExpense) + s.tripExpenses
             val newActivities = if (activity != null) listOf(activity) + s.tripActivities else s.tripActivities
             val updatedLobbies = if (activeCode != null) {
                 s.savedLobbies.map { lob ->
@@ -769,7 +789,18 @@ class SplitterViewModel : ViewModel() {
     }
 
     fun clearTripExpenses() {
-        updateState { it.copy(tripExpenses = emptyList(), tripSettlements = emptyList()) }
+        val activeCode = _uiState.value.activeLobbyCode
+        updateState { s ->
+            val updatedLobbies = if (activeCode != null) {
+                s.savedLobbies.map { lob ->
+                    if (lob.code.equals(activeCode, ignoreCase = true)) lob.copy(expenses = emptyList(), settlements = emptyList(), activities = emptyList()) else lob
+                }
+            } else s.savedLobbies
+            s.copy(tripExpenses = emptyList(), tripSettlements = emptyList(), tripActivities = emptyList(), savedLobbies = updatedLobbies)
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            appStorage?.saveLobbies(_uiState.value.savedLobbies)
+        }
     }
 
     fun calculateTripBalances(): List<TripPersonBalance> {
@@ -779,10 +810,14 @@ class SplitterViewModel : ViewModel() {
 
         val paidMap: MutableMap<String, Double> = mutableMapOf()
         val owedMap: MutableMap<String, Double> = mutableMapOf()
+        val settlementsPaid: MutableMap<String, Double> = mutableMapOf()
+        val settlementsReceived: MutableMap<String, Double> = mutableMapOf()
 
         for (p in people) {
             paidMap[p.id] = 0.0
             owedMap[p.id] = 0.0
+            settlementsPaid[p.id] = 0.0
+            settlementsReceived[p.id] = 0.0
         }
 
         for (exp in state.tripExpenses) {
@@ -807,16 +842,16 @@ class SplitterViewModel : ViewModel() {
             }
         }
 
-        // Apply completed settlements to dynamically adjust paid / received balances
+        // Apply completed settlements to adjust net balance without corrupting expense totalPaid
         for (s in state.tripSettlements) {
-            paidMap[s.fromPersonId] = (paidMap[s.fromPersonId] ?: 0.0) + s.amount
-            paidMap[s.toPersonId] = (paidMap[s.toPersonId] ?: 0.0) - s.amount
+            settlementsPaid[s.fromPersonId] = (settlementsPaid[s.fromPersonId] ?: 0.0) + s.amount
+            settlementsReceived[s.toPersonId] = (settlementsReceived[s.toPersonId] ?: 0.0) + s.amount
         }
 
         return people.map { person ->
             val totalPaid = paidMap[person.id] ?: 0.0
             val totalOwed = owedMap[person.id] ?: 0.0
-            val net = totalPaid - totalOwed
+            val net = (totalPaid + (settlementsPaid[person.id] ?: 0.0) - (settlementsReceived[person.id] ?: 0.0)) - totalOwed
             TripPersonBalance(
                 person = person,
                 totalPaid = totalPaid,
@@ -881,6 +916,12 @@ class SplitterViewModel : ViewModel() {
     private val supabaseLobbyService = SupabaseLobbyService()
     private var cloudSyncJob: Job? = null
 
+    fun stopCloudSync() {
+        cloudSyncJob?.cancel()
+        cloudSyncJob = null
+        _uiState.update { it.copy(isCloudSyncing = false) }
+    }
+
     fun startCloudSync(code: String) {
         cloudSyncJob?.cancel()
         cloudSyncJob = viewModelScope.launch(Dispatchers.IO) {
@@ -933,9 +974,19 @@ class SplitterViewModel : ViewModel() {
         return clean.replace("-", "").replace(" ", "").take(6).uppercase()
     }
 
+    private fun generateLobbyCode(): String {
+        val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+        val existingCodes = _uiState.value.savedLobbies.map { it.code.uppercase() }.toSet()
+        var code: String
+        do {
+            code = (1..6).map { chars.random() }.joinToString("")
+        } while (existingCodes.contains(code))
+        return code
+    }
+
     fun createLobby(tripName: String, hostName: String, initialMembers: List<Person> = emptyList()) {
         if (tripName.isBlank() || hostName.isBlank()) return
-        val code = (100000..999999).random().toString()
+        val code = generateLobbyCode()
         val profile = _uiState.value.userProfile
         val hostId = profile?.id ?: UUID.randomUUID().toString()
         val hostColor = profile?.color ?: 0xFF6C5CE7L
@@ -1113,30 +1164,45 @@ class SplitterViewModel : ViewModel() {
 
     fun addMemberToCurrentLobby(name: String) {
         if (name.isBlank()) return
-        addPerson(name)
-        val code = _uiState.value.activeLobbyCode ?: return
-        val currentPerson = _uiState.value.people.lastOrNull { it.name.equals(name.trim(), ignoreCase = true) }
-        val joinActivity = if (currentPerson != null) {
+        val colors = listOf(
+            0xFF6750A4L, 0xFF006A60L, 0xFF984061L, 0xFFB58300L, 
+            0xFF3B6470L, 0xFF825500L, 0xFF4A6363L, 0xFF6B5778L
+        )
+        val faceEmojis = listOf(
+            "😎", "🥳", "🤪", "🤠", "🤓", "🤩", "😈", "🧐", 
+            "😜", "😇", "🤖", "👻", "👽", "🦄", "🐶", "🦊"
+        )
+        val newPerson = Person(
+            id = UUID.randomUUID().toString(),
+            name = name.trim(),
+            color = colors[_uiState.value.people.size % colors.size],
+            emoji = faceEmojis.random()
+        )
+        val code = _uiState.value.activeLobbyCode
+        val joinActivity = if (code != null) {
             com.example.splixter.data.TripActivity(
                 lobbyCode = code,
-                actorPersonId = currentPerson.id,
-                actorName = currentPerson.name,
+                actorPersonId = newPerson.id,
+                actorName = newPerson.name,
                 actionType = "MEMBER_JOINED",
-                description = "${currentPerson.name} was added to the group"
+                description = "${newPerson.name} was added to the group"
             )
         } else null
 
-        _uiState.update { s ->
+        updateState { s ->
+            val updatedPeople = s.people + newPerson
             val newActs = if (joinActivity != null) listOf(joinActivity) + s.tripActivities else s.tripActivities
-            val updatedLobbies = s.savedLobbies.map { lob ->
-                if (lob.code == code) lob.copy(members = s.people, activities = newActs) else lob
-            }
-            s.copy(savedLobbies = updatedLobbies, tripActivities = newActs)
+            val updatedLobbies = if (code != null) {
+                s.savedLobbies.map { lob ->
+                    if (lob.code == code) lob.copy(members = updatedPeople, activities = newActs) else lob
+                }
+            } else s.savedLobbies
+            s.copy(people = updatedPeople, savedLobbies = updatedLobbies, tripActivities = newActs)
         }
         viewModelScope.launch(Dispatchers.IO) {
             appStorage?.saveLobbies(_uiState.value.savedLobbies)
-            if (currentPerson != null) {
-                supabaseLobbyService.addMember(code, currentPerson)
+            if (code != null) {
+                supabaseLobbyService.addMember(code, newPerson)
                 if (joinActivity != null) {
                     supabaseLobbyService.recordActivity(joinActivity)
                 }
@@ -1169,6 +1235,9 @@ class SplitterViewModel : ViewModel() {
     }
 
     fun deleteLobby(code: String) {
+        if (_uiState.value.activeLobbyCode.equals(code, ignoreCase = true)) {
+            stopCloudSync()
+        }
         updateState(immediate = true) { s ->
             val updated = s.savedLobbies.filterNot { it.code.equals(code, ignoreCase = true) }
             val active = if (s.activeLobbyCode.equals(code, ignoreCase = true)) null else s.activeLobbyCode

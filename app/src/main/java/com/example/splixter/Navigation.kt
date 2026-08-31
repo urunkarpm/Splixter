@@ -116,9 +116,6 @@ fun MainNavigation(splitterViewModel: SplitterViewModel = viewModel()) {
                 UserProfileSetupScreen(uiState = uiState, viewModel = splitterViewModel)
             }
             AppStep.MODE_SELECTION -> {
-                if (step == uiState.currentStep) {
-                    BackHandler { splitterViewModel.setStep(AppStep.SPLASH) }
-                }
                 ModeSelectionScreen(uiState = uiState, viewModel = splitterViewModel)
             }
             AppStep.LOBBY_HUB -> {

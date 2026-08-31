@@ -212,75 +212,6 @@ fun ModeSelectionScreen(
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Profile Pill
-                        Surface(
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .clickable { viewModel.setStep(AppStep.USER_PROFILE_SETUP) }
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                            ) {
-                                if (profile != null && profile.name.isNotBlank()) {
-                                    MonogramAvatar(
-                                        name = profile.name,
-                                        color = profile.color,
-                                        size = 20.dp,
-                                        fontSize = 9.sp
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = profile.name,
-                                        fontFamily = PlusJakartaSansFontFamily,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                } else {
-                                    Text(
-                                        text = "Set Profile",
-                                        fontFamily = PlusJakartaSansFontFamily,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Edit Profile",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // QR Scan & Join Button
-                        IconButton(
-                            onClick = { showQrScanner = true },
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.QrCodeScanner,
-                                contentDescription = "Scan Group QR Code",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
                         IconButton(
                             onClick = { viewModel.toggleDarkMode() },
                             modifier = Modifier
@@ -328,7 +259,6 @@ fun ModeSelectionScreen(
                         title = "Single Bill Splitter",
                         subtitle = "Itemized dining & restaurant receipts",
                         description = "Scan receipts, assign individual dishes to specific participants, and accurately calculate food GST, liquor VAT, tip & discounts.",
-                        features = listOf("OCR Receipt Scanner", "Food & Liquor Taxes", "Itemized Settlement"),
                         buttonText = "Start Single Bill Split",
                         onClick = {
                             viewModel.setCalculationMode(CalculationMode.SINGLE_BILL)
@@ -344,7 +274,6 @@ fun ModeSelectionScreen(
                         title = "Trip & Group Expenses",
                         subtitle = "Multi-person sequential spends for trips",
                         description = "Log ongoing expenses for trips, shared flats, or group events. Automatically resolves mutual debts into minimal settlement transactions.",
-                        features = listOf("Multi-Expense Ledger", "Mutual Debt Settlement", "Live Multi-User Sync"),
                         buttonText = "Open Trip Ledger",
                         onClick = {
                             viewModel.setCalculationMode(CalculationMode.TRIP_EXPENSE)
@@ -363,7 +292,6 @@ fun ModeSelectionScreen(
                             title = "Single Bill Splitter",
                             subtitle = "Itemized dining & restaurant receipts",
                             description = "Scan receipts, assign individual dishes to specific participants, and accurately calculate food GST, liquor VAT, tip & discounts.",
-                            features = listOf("OCR Receipt Scanner", "Food & Liquor Taxes", "Itemized Settlement"),
                             buttonText = "Start Single Bill Split",
                             modifier = Modifier.weight(1f),
                             onClick = {
@@ -378,7 +306,6 @@ fun ModeSelectionScreen(
                             title = "Trip & Group Expenses",
                             subtitle = "Multi-person sequential spends for trips",
                             description = "Log ongoing expenses for trips, shared flats, or group events. Automatically resolves mutual debts into minimal settlement transactions.",
-                            features = listOf("Multi-Expense Ledger", "Mutual Debt Settlement", "Live Multi-User Sync"),
                             buttonText = "Open Trip Ledger",
                             modifier = Modifier.weight(1f),
                             onClick = {
@@ -989,7 +916,6 @@ private fun ExecutiveModeCard(
     title: String,
     subtitle: String,
     description: String,
-    features: List<String>,
     buttonText: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
@@ -1055,31 +981,6 @@ private fun ExecutiveModeCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 19.sp
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Feature Badges
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                features.forEach { feature ->
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                    ) {
-                        Text(
-                            text = feature,
-                            fontFamily = PlusJakartaSansFontFamily,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-            }
 
             Spacer(modifier = Modifier.height(18.dp))
 
