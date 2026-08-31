@@ -57,6 +57,8 @@ import com.example.splixter.data.PersonBreakdown
 import com.example.splixter.ui.SplitterUiState
 import com.example.splixter.ui.SplitterViewModel
 import com.example.splixter.ui.components.AppBackground
+import com.example.splixter.ui.components.AdaptiveContainer
+import com.example.splixter.ui.components.WindowWidthSizeClass
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
@@ -394,6 +396,7 @@ fun ReceiptSummaryScreen(
         }
     }
 
+    AdaptiveContainer(maxWidth = 1060.dp) { sizeClass ->
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -521,7 +524,8 @@ fun ReceiptSummaryScreen(
             com.example.splixter.ui.components.ConfettiEffect()
             }
         }
-    }
+}
+}
 }
 }
 

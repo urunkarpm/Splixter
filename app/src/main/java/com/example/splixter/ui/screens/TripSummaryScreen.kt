@@ -71,6 +71,8 @@ import com.example.splixter.ui.components.MonogramAvatar
 import com.example.splixter.ui.components.appCardBorder
 import com.example.splixter.ui.components.appCardColors
 import com.example.splixter.ui.components.bounceClick
+import com.example.splixter.ui.components.AdaptiveContainer
+import com.example.splixter.ui.components.WindowWidthSizeClass
 import com.example.splixter.ui.theme.PlusJakartaSansFontFamily
 import java.util.Locale
 
@@ -137,56 +139,57 @@ fun TripSummaryScreen(
         }
     }
 
-    AppBackground(modifier = modifier) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-        ) {
-            // Top Bar
-            Row(
+    AdaptiveContainer(maxWidth = 1060.dp) { sizeClass ->
+        AppBackground(modifier = modifier) {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                            viewModel.setStep(AppStep.TRIP_EXPENSES)
-                        },
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(20.dp)
-                        )
+                // Top Bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = if (sizeClass == WindowWidthSizeClass.COMPACT) 20.dp else 32.dp, end = if (sizeClass == WindowWidthSizeClass.COMPACT) 20.dp else 32.dp, top = 8.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                viewModel.setStep(AppStep.TRIP_EXPENSES)
+                            },
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Settlement Statement",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Optimized multi-debt resolution",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text(
-                            text = "Settlement Statement",
-                            fontFamily = PlusJakartaSansFontFamily,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Optimized multi-debt resolution",
-                            fontFamily = PlusJakartaSansFontFamily,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
 
                 IconButton(
                     onClick = {
@@ -390,21 +393,55 @@ fun TripSummaryScreen(
                         }
                     }
                 } else {
-                    val currentUser = uiState.people.find { it.isCurrentUser }
-                    val currentUserName = currentUser?.name ?: uiState.userProfile?.name ?: ""
-                    val currentUserId = currentUser?.id ?: uiState.userProfile?.id ?: uiState.currentUserId ?: ""
-
-                    items(settlements) { settlement ->
-                        SettlementCard(
-                            settlement = settlement,
-                            currentUserId = currentUserId,
-                            currentUserName = currentUserName,
-                            activeLobbyCode = uiState.activeLobbyCode,
-                            tripName = uiState.tripName,
-                            onRecordSettlement = {
-                                viewModel.recordSettlementPayment(settlement)
+                    if (sizeClass == WindowWidthSizeClass.COMPACT) {
+                        items(settlements) { settlement ->
+                            SettlementCard(
+                                settlement = settlement,
+                                currentUserId = currentUserId,
+                                currentUserName = currentUserName,
+                                activeLobbyCode = uiState.activeLobbyCode,
+                                tripName = uiState.tripName,
+                                onRecordSettlement = {
+                                    viewModel.recordSettlementPayment(settlement)
+                                }
+                            )
+                        }
+                    } else {
+                        // Tablets & Foldables: 2-Column Responsive Settlement Grid
+                        items(settlements.chunked(2)) { pair ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                SettlementCard(
+                                    settlement = pair[0],
+                                    currentUserId = currentUserId,
+                                    currentUserName = currentUserName,
+                                    activeLobbyCode = uiState.activeLobbyCode,
+                                    tripName = uiState.tripName,
+                                    modifier = Modifier.weight(1f),
+                                    onRecordSettlement = {
+                                        viewModel.recordSettlementPayment(pair[0])
+                                    }
+                                )
+                                if (pair.size > 1) {
+                                    SettlementCard(
+                                        settlement = pair[1],
+                                        currentUserId = currentUserId,
+                                        currentUserName = currentUserName,
+                                        activeLobbyCode = uiState.activeLobbyCode,
+                                        tripName = uiState.tripName,
+                                        modifier = Modifier.weight(1f),
+                                        onRecordSettlement = {
+                                            viewModel.recordSettlementPayment(pair[1])
+                                        }
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
                             }
-                        )
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
                     }
                 }
 
@@ -420,8 +457,26 @@ fun TripSummaryScreen(
                     )
                 }
 
-                items(balances) { balance ->
-                    PersonBalanceCard(balance = balance)
+                if (sizeClass == WindowWidthSizeClass.COMPACT) {
+                    items(balances) { balance ->
+                        PersonBalanceCard(balance = balance)
+                    }
+                } else {
+                    // Tablets & Foldables: 2-Column Responsive Balances Grid
+                    items(balances.chunked(2)) { pair ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            PersonBalanceCard(balance = pair[0], modifier = Modifier.weight(1f))
+                            if (pair.size > 1) {
+                                PersonBalanceCard(balance = pair[1], modifier = Modifier.weight(1f))
+                            } else {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
 
                 // SECTION 3: LIVE ACTIVITY FEED (if any)
@@ -509,6 +564,7 @@ fun TripSummaryScreen(
         }
     }
 }
+}
 
 @Composable
 private fun SettlementCard(
@@ -517,6 +573,7 @@ private fun SettlementCard(
     currentUserName: String,
     activeLobbyCode: String?,
     tripName: String,
+    modifier: Modifier = Modifier,
     onRecordSettlement: () -> Unit
 ) {
     val context = LocalContext.current
@@ -603,7 +660,7 @@ private fun SettlementCard(
         shape = RoundedCornerShape(18.dp),
         colors = appCardColors(),
         border = appCardBorder(),
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -995,7 +1052,7 @@ private fun ActivityFeedCard(activity: com.example.splixter.data.TripActivity) {
 }
 
 @Composable
-private fun PersonBalanceCard(balance: TripPersonBalance) {
+private fun PersonBalanceCard(balance: TripPersonBalance, modifier: Modifier = Modifier) {
     val isCreditor = balance.netBalance > 0.01
     val isDebtor = balance.netBalance < -0.01
 
@@ -1003,7 +1060,7 @@ private fun PersonBalanceCard(balance: TripPersonBalance) {
         shape = RoundedCornerShape(16.dp),
         colors = appCardColors(),
         border = appCardBorder(),
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier

@@ -96,6 +96,8 @@ import com.example.splixter.ui.components.MonogramAvatar
 import com.example.splixter.ui.components.appCardBorder
 import com.example.splixter.ui.components.appCardColors
 import com.example.splixter.ui.components.bounceClick
+import com.example.splixter.ui.components.AdaptiveContainer
+import com.example.splixter.ui.components.WindowWidthSizeClass
 import com.example.splixter.ui.theme.PlusJakartaSansFontFamily
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -145,7 +147,9 @@ fun TripExpensesScreen(
         }
     }
 
-    AppBackground(modifier = modifier) {
+    AdaptiveContainer(maxWidth = 1060.dp) { sizeClass ->
+        val hPad = if (sizeClass == WindowWidthSizeClass.COMPACT) 20.dp else 32.dp
+        AppBackground(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -157,7 +161,7 @@ fun TripExpensesScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 4.dp),
+                    .padding(start = hPad, end = hPad, top = 8.dp, bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1041,6 +1045,7 @@ fun TripExpensesScreen(
                 }
             }
         }
+    }
     }
 }
 

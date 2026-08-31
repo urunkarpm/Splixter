@@ -86,6 +86,8 @@ import com.example.splixter.ui.components.MonogramAvatar
 import com.example.splixter.ui.components.appCardBorder
 import com.example.splixter.ui.components.appCardColors
 import com.example.splixter.ui.components.bounceClick
+import com.example.splixter.ui.components.AdaptiveContainer
+import com.example.splixter.ui.components.WindowWidthSizeClass
 import com.example.splixter.ui.theme.PlusJakartaSansFontFamily
 import java.util.Locale
 
@@ -194,111 +196,154 @@ fun LobbyHubScreen(
         BackHandler { activeAction = null }
     }
 
-    AppBackground(modifier = modifier) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .padding(20.dp)
-                .verticalScroll(rememberScrollState())
-        ) {
-            // Top Bar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+
+    AdaptiveContainer(maxWidth = 1060.dp) { sizeClass ->
+        AppBackground(modifier = modifier) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .padding(horizontal = if (sizeClass == WindowWidthSizeClass.COMPACT) 20.dp else 32.dp, vertical = 20.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = {
-                            if (activeAction != null) {
-                                activeAction = null
-                            } else {
-                                viewModel.setStep(AppStep.MODE_SELECTION)
+                // Top Bar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = {
+                                if (activeAction != null) {
+                                    activeAction = null
+                                } else {
+                                    viewModel.setStep(AppStep.MODE_SELECTION)
+                                }
                             }
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
                         }
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onSurface
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = when (activeAction) {
+                                LobbyAction.CREATE -> "Create Trip Room"
+                                LobbyAction.JOIN -> "Join Trip Room"
+                                else -> "Trip Hub"
+                            },
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = when (activeAction) {
-                            LobbyAction.CREATE -> "Create Trip Room"
-                            LobbyAction.JOIN -> "Join Trip Room"
-                            else -> "Trip Hub"
-                        },
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            when (activeAction) {
-                null -> {
-                    // MAIN LOBBY OPTIONS SELECTION
-                    Text(
-                        text = "Trip Sessions",
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Create a new trip ledger or join an existing session via code.",
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 13.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                when (activeAction) {
+                    null -> {
+                        // MAIN LOBBY OPTIONS SELECTION
+                        Text(
+                            text = "Trip Sessions",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Create a new trip ledger or join an existing session via code.",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
 
-                    // Option 1 Button Card: Create a Lobby
-                    ExecutiveLobbyOptionCard(
-                        icon = Icons.Default.Add,
-                        iconColor = Color(0xFF6366F1),
-                        title = "Create a Trip Ledger",
-                        subtitle = "Host a new trip & generate a shareable 6-digit code",
-                        buttonText = "Create Ledger",
-                        onClick = {
-                            selectedSavedGroup = null
-                            activeAction = LobbyAction.CREATE
+                        if (sizeClass == WindowWidthSizeClass.COMPACT) {
+                            // Option 1 Button Card: Create a Lobby
+                            ExecutiveLobbyOptionCard(
+                                icon = Icons.Default.Add,
+                                iconColor = Color(0xFF6366F1),
+                                title = "Create a Trip Ledger",
+                                subtitle = "Host a new trip & generate a shareable 6-digit code",
+                                buttonText = "Create Ledger",
+                                onClick = {
+                                    selectedSavedGroup = null
+                                    activeAction = LobbyAction.CREATE
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Option 2 Button Card: Direct QR Scan to Join
+                            ExecutiveLobbyOptionCard(
+                                icon = Icons.Default.QrCodeScanner,
+                                iconColor = Color(0xFF10B981),
+                                title = "Scan QR to Join Instantly",
+                                subtitle = "Point camera at host's QR code to enter ledger",
+                                buttonText = "Scan QR",
+                                onClick = { showQrScanner = true }
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Option 3 Button Card: Join via Code
+                            ExecutiveLobbyOptionCard(
+                                icon = Icons.Default.Key,
+                                iconColor = Color(0xFF0284C7),
+                                title = "Join with 6-Digit Code",
+                                subtitle = "Enter room code shared by your friend or host",
+                                buttonText = "Enter Code",
+                                onClick = { activeAction = LobbyAction.JOIN }
+                            )
+                        } else {
+                            // TABLETS & FOLDABLES: 3-Column Responsive Grid!
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                ExecutiveLobbyOptionCard(
+                                    icon = Icons.Default.Add,
+                                    iconColor = Color(0xFF6366F1),
+                                    title = "Create a Trip Ledger",
+                                    subtitle = "Host a new trip & share 6-digit code",
+                                    buttonText = "Create Ledger",
+                                    modifier = Modifier.weight(1f),
+                                    onClick = {
+                                        selectedSavedGroup = null
+                                        activeAction = LobbyAction.CREATE
+                                    }
+                                )
+
+                                ExecutiveLobbyOptionCard(
+                                    icon = Icons.Default.QrCodeScanner,
+                                    iconColor = Color(0xFF10B981),
+                                    title = "Scan QR to Join",
+                                    subtitle = "Point camera at host's QR code",
+                                    buttonText = "Scan QR",
+                                    modifier = Modifier.weight(1f),
+                                    onClick = { showQrScanner = true }
+                                )
+
+                                ExecutiveLobbyOptionCard(
+                                    icon = Icons.Default.Key,
+                                    iconColor = Color(0xFF0284C7),
+                                    title = "Join with Code",
+                                    subtitle = "Enter room code from your host",
+                                    buttonText = "Enter Code",
+                                    modifier = Modifier.weight(1f),
+                                    onClick = { activeAction = LobbyAction.JOIN }
+                                )
+                            }
                         }
-                    )
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Option 2 Button Card: Direct QR Scan to Join
-                    ExecutiveLobbyOptionCard(
-                        icon = Icons.Default.QrCodeScanner,
-                        iconColor = Color(0xFF10B981),
-                        title = "Scan QR to Join Instantly",
-                        subtitle = "Point camera at host's QR code to enter ledger",
-                        buttonText = "Scan QR",
-                        onClick = { showQrScanner = true }
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Option 3 Button Card: Join via Code
-                    ExecutiveLobbyOptionCard(
-                        icon = Icons.Default.Key,
-                        iconColor = Color(0xFF0284C7),
-                        title = "Join with 6-Digit Code",
-                        subtitle = "Enter room code shared by your friend or host",
-                        buttonText = "Enter Code",
-                        onClick = { activeAction = LobbyAction.JOIN }
-                    )
-
-                    Spacer(modifier = Modifier.height(28.dp))
+                        Spacer(modifier = Modifier.height(28.dp))
 
                     // SAVED / RECENT SESSIONS SECTION
                     if (uiState.savedLobbies.isNotEmpty()) {
@@ -718,6 +763,7 @@ fun LobbyHubScreen(
         }
     }
 }
+}
 
 
 
@@ -728,6 +774,7 @@ private fun ExecutiveLobbyOptionCard(
     title: String,
     subtitle: String,
     buttonText: String,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -736,7 +783,7 @@ private fun ExecutiveLobbyOptionCard(
         shape = RoundedCornerShape(16.dp),
         colors = appCardColors(),
         border = appCardBorder(),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)

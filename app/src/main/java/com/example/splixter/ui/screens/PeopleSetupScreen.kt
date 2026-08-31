@@ -102,6 +102,8 @@ import com.example.splixter.ui.components.AppBackground
 import com.example.splixter.ui.components.appCardColors
 import com.example.splixter.ui.components.appCardBorder
 import com.example.splixter.ui.components.bounceClick
+import com.example.splixter.ui.components.AdaptiveContainer
+import com.example.splixter.ui.components.WindowWidthSizeClass
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -247,6 +249,7 @@ fun PeopleSetupScreen(
         )
     }
 
+    AdaptiveContainer(maxWidth = 1060.dp) { sizeClass ->
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -902,7 +905,7 @@ fun PeopleSetupScreen(
     }
 }
 }
-
+}
 
 @Composable
 fun PersonAvatarCard(

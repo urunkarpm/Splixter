@@ -87,6 +87,8 @@ import com.example.splixter.ui.components.WorkflowStepHeader
 import com.example.splixter.ui.components.appCardBorder
 import com.example.splixter.ui.components.appCardColors
 import com.example.splixter.ui.components.bounceClick
+import com.example.splixter.ui.components.AdaptiveContainer
+import com.example.splixter.ui.components.WindowWidthSizeClass
 import com.example.splixter.ui.theme.PlusJakartaSansFontFamily
 import java.util.Locale
 
@@ -145,6 +147,7 @@ fun ItemAssignmentScreen(
         list
     }
 
+    AdaptiveContainer(maxWidth = 1060.dp) { sizeClass ->
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -573,6 +576,7 @@ fun ItemAssignmentScreen(
             }
         }
     }
+}
 }
 
 @OptIn(ExperimentalLayoutApi::class)

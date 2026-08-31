@@ -100,6 +100,9 @@ import com.example.splixter.data.LobbySession
 import com.example.splixter.ui.components.ClaimProfileDialog
 import com.example.splixter.ui.components.QrScannerDialog
 
+import com.example.splixter.ui.components.AdaptiveContainer
+import com.example.splixter.ui.components.WindowWidthSizeClass
+
 @Composable
 fun ModeSelectionScreen(
     uiState: SplitterUiState,
@@ -179,230 +182,264 @@ fun ModeSelectionScreen(
         )
     }
 
-    AppBackground(modifier = modifier) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .imePadding()
-                .padding(horizontal = 20.dp)
-                .verticalScroll(scrollState)
-        ) {
-            // Top Bar
-            Row(
+    AdaptiveContainer(maxWidth = 1060.dp) { sizeClass ->
+        AppBackground(modifier = modifier) {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp, bottom = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .padding(horizontal = if (sizeClass == WindowWidthSizeClass.COMPACT) 20.dp else 32.dp)
+                    .verticalScroll(scrollState)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "Splixter",
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                }
+                // Top Bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Splixter",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Profile Pill
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { viewModel.setStep(AppStep.USER_PROFILE_SETUP) }
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Profile Pill
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { viewModel.setStep(AppStep.USER_PROFILE_SETUP) }
                         ) {
-                            if (profile != null && profile.name.isNotBlank()) {
-                                MonogramAvatar(
-                                    name = profile.name,
-                                    color = profile.color,
-                                    size = 20.dp,
-                                    fontSize = 9.sp
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = profile.name,
-                                    fontFamily = PlusJakartaSansFontFamily,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            } else {
-                                Text(
-                                    text = "Set Profile",
-                                    fontFamily = PlusJakartaSansFontFamily,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                if (profile != null && profile.name.isNotBlank()) {
+                                    MonogramAvatar(
+                                        name = profile.name,
+                                        color = profile.color,
+                                        size = 20.dp,
+                                        fontSize = 9.sp
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = profile.name,
+                                        fontFamily = PlusJakartaSansFontFamily,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                } else {
+                                    Text(
+                                        text = "Set Profile",
+                                        fontFamily = PlusJakartaSansFontFamily,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Profile",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(12.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // QR Scan & Join Button
+                        IconButton(
+                            onClick = { showQrScanner = true },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                        ) {
                             Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = "Edit Profile",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(12.dp)
+                                imageVector = Icons.Default.QrCodeScanner,
+                                contentDescription = "Scan Group QR Code",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        IconButton(
+                            onClick = { viewModel.toggleDarkMode() },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        ) {
+                            Icon(
+                                imageVector = if (uiState.isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                contentDescription = "Toggle Dark Mode",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
+                }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                    // QR Scan & Join Button
-                    IconButton(
-                        onClick = { showQrScanner = true },
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                // Heading Title
+                Text(
+                    text = "Select Mode",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = "Choose how you would like to track and settle expenses.",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                if (sizeClass == WindowWidthSizeClass.COMPACT) {
+                    // COMPACT / PHONE: Vertical Stack
+                    ExecutiveModeCard(
+                        icon = Icons.AutoMirrored.Filled.ReceiptLong,
+                        iconAccentColor = Color(0xFF6366F1),
+                        title = "Single Bill Splitter",
+                        subtitle = "Itemized dining & restaurant receipts",
+                        description = "Scan receipts, assign individual dishes to specific participants, and accurately calculate food GST, liquor VAT, tip & discounts.",
+                        features = listOf("OCR Receipt Scanner", "Food & Liquor Taxes", "Itemized Settlement"),
+                        buttonText = "Start Single Bill Split",
+                        onClick = {
+                            viewModel.setCalculationMode(CalculationMode.SINGLE_BILL)
+                            viewModel.setStep(AppStep.PEOPLE)
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    ExecutiveModeCard(
+                        icon = Icons.Default.FlightTakeoff,
+                        iconAccentColor = Color(0xFF0284C7),
+                        title = "Trip & Group Expenses",
+                        subtitle = "Multi-person sequential spends for trips",
+                        description = "Log ongoing expenses for trips, shared flats, or group events. Automatically resolves mutual debts into minimal settlement transactions.",
+                        features = listOf("Multi-Expense Ledger", "Mutual Debt Settlement", "Live Multi-User Sync"),
+                        buttonText = "Open Trip Ledger",
+                        onClick = {
+                            viewModel.setCalculationMode(CalculationMode.TRIP_EXPENSE)
+                            viewModel.setStep(AppStep.LOBBY_HUB)
+                        }
+                    )
+                } else {
+                    // TABLETS & FOLDABLES: 2-Column Responsive Grid!
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.QrCodeScanner,
-                            contentDescription = "Scan Group QR Code",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    IconButton(
-                        onClick = { viewModel.toggleDarkMode() },
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    ) {
-                        Icon(
-                            imageVector = if (uiState.isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
-                            contentDescription = "Toggle Dark Mode",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Heading Title
-            Text(
-                text = "Select Mode",
-                fontFamily = PlusJakartaSansFontFamily,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "Choose how you would like to track and settle expenses.",
-                fontFamily = PlusJakartaSansFontFamily,
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Card 1: Single Bill / Itemized Splitter
-            ExecutiveModeCard(
-                icon = Icons.AutoMirrored.Filled.ReceiptLong,
-                iconAccentColor = Color(0xFF6366F1),
-                title = "Single Bill Splitter",
-                subtitle = "Itemized dining & restaurant receipts",
-                description = "Scan receipts, assign individual dishes to specific participants, and accurately calculate food GST, liquor VAT, tip & discounts.",
-                features = listOf("OCR Receipt Scanner", "Food & Liquor Taxes", "Itemized Settlement"),
-                buttonText = "Start Single Bill Split",
-                onClick = {
-                    viewModel.setCalculationMode(CalculationMode.SINGLE_BILL)
-                    viewModel.setStep(AppStep.PEOPLE)
-                }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Card 2: Group / Trip Expense Log
-            ExecutiveModeCard(
-                icon = Icons.Default.FlightTakeoff,
-                iconAccentColor = Color(0xFF0284C7),
-                title = "Trip & Group Expenses",
-                subtitle = "Multi-person sequential spends for trips",
-                description = "Log ongoing expenses for trips, shared flats, or group events. Automatically resolves mutual debts into minimal settlement transactions.",
-                features = listOf("Multi-Expense Ledger", "Mutual Debt Settlement", "Live Multi-User Sync"),
-                buttonText = "Open Trip Ledger",
-                onClick = {
-                    viewModel.setCalculationMode(CalculationMode.TRIP_EXPENSE)
-                    viewModel.setStep(AppStep.LOBBY_HUB)
-                }
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // SETTINGS MODULE
-            SettingsSectionCard(
-                nameInput = nameInput,
-                onNameChange = {
-                    nameInput = it
-                    isSettingsSaved = false
-                },
-                upiInput = upiInput,
-                onUpiChange = {
-                    upiInput = it
-                    isSettingsSaved = false
-                },
-                isSaved = isSettingsSaved,
-                isCheckingUpdate = uiState.isCheckingUpdate,
-                onSave = {
-                    if (nameInput.isNotBlank()) {
-                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                        viewModel.saveUserProfile(
-                            name = nameInput.trim(),
-                            upiId = upiInput.trim(),
-                            emoji = profile?.emoji ?: "😎",
-                            color = profile?.color ?: 0xFF6C5CE7,
-                            phone = profile?.phoneNumber
-                        )
-                        isSettingsSaved = true
-                        Toast.makeText(context, "Settings saved successfully!", Toast.LENGTH_SHORT).show()
-                    }
-                },
-                onCheckUpdates = {
-                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                    viewModel.checkForAppUpdates(isManual = true) { result ->
-                        when (result) {
-                            is AppUpdateResult.Success -> {
-                                // Dialog is shown automatically
+                        ExecutiveModeCard(
+                            icon = Icons.AutoMirrored.Filled.ReceiptLong,
+                            iconAccentColor = Color(0xFF6366F1),
+                            title = "Single Bill Splitter",
+                            subtitle = "Itemized dining & restaurant receipts",
+                            description = "Scan receipts, assign individual dishes to specific participants, and accurately calculate food GST, liquor VAT, tip & discounts.",
+                            features = listOf("OCR Receipt Scanner", "Food & Liquor Taxes", "Itemized Settlement"),
+                            buttonText = "Start Single Bill Split",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                viewModel.setCalculationMode(CalculationMode.SINGLE_BILL)
+                                viewModel.setStep(AppStep.PEOPLE)
                             }
-                            is AppUpdateResult.NoUpdate -> {
-                                Toast.makeText(context, "You're using the latest version of Splixter (${result.currentVersion})! ✓", Toast.LENGTH_LONG).show()
+                        )
+
+                        ExecutiveModeCard(
+                            icon = Icons.Default.FlightTakeoff,
+                            iconAccentColor = Color(0xFF0284C7),
+                            title = "Trip & Group Expenses",
+                            subtitle = "Multi-person sequential spends for trips",
+                            description = "Log ongoing expenses for trips, shared flats, or group events. Automatically resolves mutual debts into minimal settlement transactions.",
+                            features = listOf("Multi-Expense Ledger", "Mutual Debt Settlement", "Live Multi-User Sync"),
+                            buttonText = "Open Trip Ledger",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                viewModel.setCalculationMode(CalculationMode.TRIP_EXPENSE)
+                                viewModel.setStep(AppStep.LOBBY_HUB)
                             }
-                            is AppUpdateResult.Error -> {
-                                Toast.makeText(context, "Checking GitHub releases...", Toast.LENGTH_SHORT).show()
-                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(result.fallbackUrl))
-                                try {
-                                    context.startActivity(browserIntent)
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "Unable to open browser", Toast.LENGTH_SHORT).show()
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // SETTINGS MODULE
+                SettingsSectionCard(
+                    nameInput = nameInput,
+                    onNameChange = {
+                        nameInput = it
+                        isSettingsSaved = false
+                    },
+                    upiInput = upiInput,
+                    onUpiChange = {
+                        upiInput = it
+                        isSettingsSaved = false
+                    },
+                    isSaved = isSettingsSaved,
+                    isCheckingUpdate = uiState.isCheckingUpdate,
+                    sizeClass = sizeClass,
+                    onSave = {
+                        if (nameInput.isNotBlank()) {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            viewModel.saveUserProfile(
+                                name = nameInput.trim(),
+                                upiId = upiInput.trim(),
+                                emoji = profile?.emoji ?: "😎",
+                                color = profile?.color ?: 0xFF6C5CE7,
+                                phone = profile?.phoneNumber
+                            )
+                            isSettingsSaved = true
+                            Toast.makeText(context, "Settings saved successfully!", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onCheckUpdates = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        viewModel.checkForAppUpdates(isManual = true) { result ->
+                            when (result) {
+                                is AppUpdateResult.Success -> {
+                                    // Dialog is shown automatically
+                                }
+                                is AppUpdateResult.NoUpdate -> {
+                                    Toast.makeText(context, "You're using the latest version of Splixter (${result.currentVersion})! ✓", Toast.LENGTH_LONG).show()
+                                }
+                                is AppUpdateResult.Error -> {
+                                    Toast.makeText(context, "Couldn't check for updates: ${result.message}", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         }
                     }
-                }
-            )
+                )
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
 
         // APP UPDATE AVAILABLE DIALOG
@@ -586,6 +623,7 @@ private fun SettingsSectionCard(
     onUpiChange: (String) -> Unit,
     isSaved: Boolean,
     isCheckingUpdate: Boolean,
+    sizeClass: WindowWidthSizeClass = WindowWidthSizeClass.COMPACT,
     onSave: () -> Unit,
     onCheckUpdates: () -> Unit
 ) {
@@ -644,72 +682,142 @@ private fun SettingsSectionCard(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // 1. NAME FIELD
-            Text(
-                text = "Display Name",
-                fontFamily = PlusJakartaSansFontFamily,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(6.dp))
+            if (sizeClass == WindowWidthSizeClass.COMPACT) {
+                // COMPACT: Vertical Stack
+                Text(
+                    text = "Display Name",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                OutlinedTextField(
+                    value = nameInput,
+                    onValueChange = onNameChange,
+                    placeholder = { Text("Your Name (e.g. Alex)", fontSize = 13.sp) },
+                    singleLine = true,
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-            OutlinedTextField(
-                value = nameInput,
-                onValueChange = onNameChange,
-                placeholder = { Text("Your Name (e.g. Alex)", fontSize = 13.sp) },
-                singleLine = true,
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                },
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                ),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                modifier = Modifier.fillMaxWidth()
-            )
+                Spacer(modifier = Modifier.height(14.dp))
 
-            Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "UPI Address (For 1-Click Payments)",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                OutlinedTextField(
+                    value = upiInput,
+                    onValueChange = onUpiChange,
+                    placeholder = { Text("e.g. mobile@upi or name@okaxis", fontSize = 13.sp) },
+                    singleLine = true,
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.AccountBalanceWallet,
+                            contentDescription = null,
+                            tint = Color(0xFF10B981),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                    ),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                // TABLETS & FOLDABLES: 2-Column Responsive Form!
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Display Name",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = nameInput,
+                            onValueChange = onNameChange,
+                            placeholder = { Text("Your Name (e.g. Alex)", fontSize = 13.sp) },
+                            singleLine = true,
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
 
-            // 2. UPI ADDRESS FIELD
-            Text(
-                text = "UPI Address (For 1-Click Payments)",
-                fontFamily = PlusJakartaSansFontFamily,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-
-            OutlinedTextField(
-                value = upiInput,
-                onValueChange = onUpiChange,
-                placeholder = { Text("e.g. mobile@upi or name@okaxis", fontSize = 13.sp) },
-                singleLine = true,
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.AccountBalanceWallet,
-                        contentDescription = null,
-                        tint = Color(0xFF10B981),
-                        modifier = Modifier.size(18.dp)
-                    )
-                },
-                shape = RoundedCornerShape(14.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                ),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
-                modifier = Modifier.fillMaxWidth()
-            )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "UPI Address (For 1-Click Payments)",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = upiInput,
+                            onValueChange = onUpiChange,
+                            placeholder = { Text("e.g. mobile@upi or name@okaxis", fontSize = 13.sp) },
+                            singleLine = true,
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.AccountBalanceWallet,
+                                    contentDescription = null,
+                                    tint = Color(0xFF10B981),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -883,6 +991,7 @@ private fun ExecutiveModeCard(
     description: String,
     features: List<String>,
     buttonText: String,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -891,7 +1000,7 @@ private fun ExecutiveModeCard(
         shape = RoundedCornerShape(18.dp),
         colors = appCardColors(),
         border = appCardBorder(),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
