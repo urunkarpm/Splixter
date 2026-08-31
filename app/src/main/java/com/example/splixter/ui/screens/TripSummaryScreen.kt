@@ -740,6 +740,48 @@ private fun SettlementCard(
                                 fontWeight = FontWeight.Bold
                             )
                         }
+
+                        // Creditor: Confirm Received Button
+                        Surface(
+                            color = if (isSettled) Color(0xFF10B981).copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(
+                                1.dp,
+                                if (isSettled) Color(0xFF10B981).copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            modifier = Modifier
+                                .height(38.dp)
+                                .clickable {
+                                    if (!isSettled) {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        isSettled = true
+                                        onRecordSettlement()
+                                        android.widget.Toast.makeText(context, "Marked received & synced across members!", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 12.dp)
+                            ) {
+                                if (isSettled) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFF10B981),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+                                Text(
+                                    text = if (isSettled) "Received ✓" else "Received ✓",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSettled) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
                     }
                     isCurrentDebtor -> {
                         // Debtor ONLY: 1-Click UPI Payment Button to pay the creditor
@@ -776,9 +818,51 @@ private fun SettlementCard(
                                 fontWeight = FontWeight.Bold
                             )
                         }
+
+                        // Debtor: Paid Confirmation Button
+                        Surface(
+                            color = if (isSettled) Color(0xFF10B981).copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(
+                                1.dp,
+                                if (isSettled) Color(0xFF10B981).copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant
+                            ),
+                            modifier = Modifier
+                                .height(38.dp)
+                                .clickable {
+                                    if (!isSettled) {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        isSettled = true
+                                        onRecordSettlement()
+                                        android.widget.Toast.makeText(context, "Marked paid & synced across members!", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 12.dp)
+                            ) {
+                                if (isSettled) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFF10B981),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+                                Text(
+                                    text = if (isSettled) "Paid ✓" else "Paid ✓",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSettled) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
                     }
                     else -> {
-                        // 3rd party observer: Offer action to share App link and Group Code with the debtor
+                        // 3rd party observer: Can ONLY invite/share app link and see pending transfer status (NO Mark Settled button for 3rd parties!)
                         OutlinedButton(
                             onClick = {
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
@@ -818,59 +902,25 @@ private fun SettlementCard(
                                 )
                             }
                         }
-                    }
-                }
 
-                // Mark Settled / Confirm Received Button
-                Surface(
-                    color = if (isSettled) Color(0xFF10B981).copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(
-                        1.dp,
-                        if (isSettled) Color(0xFF10B981).copy(alpha = 0.6f) else MaterialTheme.colorScheme.outlineVariant
-                    ),
-                    modifier = Modifier
-                        .height(38.dp)
-                        .clickable {
-                            if (!isSettled) {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                                isSettled = true
-                                onRecordSettlement()
-                                android.widget.Toast.makeText(context, "Marked settled & synced across members!", android.widget.Toast.LENGTH_SHORT).show()
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                            modifier = Modifier.height(38.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 10.dp)
+                            ) {
+                                Text(
+                                    text = "Pending Transfer",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                        }
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 12.dp)
-                    ) {
-                        if (isSettled) {
-                            Icon(
-                                imageVector = Icons.Default.CheckCircle,
-                                contentDescription = null,
-                                tint = Color(0xFF10B981),
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Settled ✓",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF10B981)
-                            )
-                        } else {
-                            Text(
-                                text = when {
-                                    isCurrentCreditor -> "Received ✓"
-                                    isCurrentDebtor -> "Paid ✓"
-                                    else -> "Mark Settled"
-                                },
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
                         }
                     }
                 }
