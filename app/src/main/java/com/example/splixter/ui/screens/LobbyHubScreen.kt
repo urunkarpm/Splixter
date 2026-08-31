@@ -1,5 +1,6 @@
 package com.example.splixter.ui.screens
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -20,6 +21,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,23 +33,29 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.HowToReg
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,19 +66,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.example.splixter.data.AppStep
+import com.example.splixter.data.LobbySession
+import com.example.splixter.data.Person
 import com.example.splixter.data.SavedGroup
 import com.example.splixter.ui.SplitterUiState
 import com.example.splixter.ui.SplitterViewModel
 import com.example.splixter.ui.components.AppBackground
 import com.example.splixter.ui.components.MonogramAvatar
-import com.example.splixter.ui.components.bounceClick
 import com.example.splixter.ui.components.appCardBorder
 import com.example.splixter.ui.components.appCardColors
+import com.example.splixter.ui.components.bounceClick
 import com.example.splixter.ui.theme.PlusJakartaSansFontFamily
 import java.util.Locale
 
@@ -95,6 +110,11 @@ fun LobbyHubScreen(
     var joinMemberName by remember { mutableStateOf(uiState.userProfile?.name ?: "") }
     var showQrScanner by remember { mutableStateOf(false) }
 
+    // Claim member state
+    var pendingClaimSession by remember { mutableStateOf<LobbySession?>(null) }
+    var pendingJoinCode by remember { mutableStateOf<String?>(null) }
+    var isCheckingLobby by remember { mutableStateOf(false) }
+
     androidx.compose.runtime.LaunchedEffect(uiState.userProfile) {
         if (createHostName.isBlank() && uiState.userProfile != null) {
             createHostName = uiState.userProfile.name
@@ -104,7 +124,27 @@ fun LobbyHubScreen(
         }
     }
 
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+
+    fun startJoinFlow(code: String, rawName: String) {
+        val cleanCode = viewModel.extractLobbyCode(code)
+        if (cleanCode.isBlank()) return
+        val memberName = rawName.ifBlank { uiState.userProfile?.name ?: "Guest" }.trim()
+
+        isCheckingLobby = true
+        Toast.makeText(context, "Checking group $cleanCode...", Toast.LENGTH_SHORT).show()
+        
+        viewModel.fetchLobbyForJoin(cleanCode) { session ->
+            isCheckingLobby = false
+            if (session != null && session.members.isNotEmpty()) {
+                pendingClaimSession = session
+                pendingJoinCode = cleanCode
+            } else {
+                viewModel.joinLobby(cleanCode, memberName, null)
+            }
+        }
+    }
 
     if (showQrScanner) {
         com.example.splixter.ui.components.QrScannerDialog(
@@ -113,16 +153,38 @@ fun LobbyHubScreen(
                 val extracted = viewModel.extractLobbyCode(rawPayload)
                 showQrScanner = false
                 if (extracted.isNotBlank()) {
-                    val memberName = if (joinMemberName.isNotBlank()) {
-                        joinMemberName.trim()
-                    } else if (uiState.userProfile != null && uiState.userProfile.name.isNotBlank()) {
-                        uiState.userProfile.name.trim()
-                    } else {
-                        "Guest"
-                    }
-                    android.widget.Toast.makeText(context, "Joining group $extracted...", android.widget.Toast.LENGTH_SHORT).show()
-                    viewModel.joinLobby(extracted, memberName)
+                    startJoinFlow(extracted, joinMemberName)
                 }
+            }
+        )
+    }
+
+    // CLAIM MEMBER MODAL DIALOG
+    if (pendingClaimSession != null && pendingJoinCode != null) {
+        ClaimProfileDialog(
+            session = pendingClaimSession!!,
+            joinMemberName = joinMemberName.ifBlank { uiState.userProfile?.name ?: "Guest" },
+            onDismiss = {
+                pendingClaimSession = null
+                pendingJoinCode = null
+            },
+            onClaimMember = { personId ->
+                val code = pendingJoinCode!!
+                val name = joinMemberName.ifBlank { uiState.userProfile?.name ?: "Guest" }
+                pendingClaimSession = null
+                pendingJoinCode = null
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                Toast.makeText(context, "Claimed profile & joined trip!", Toast.LENGTH_SHORT).show()
+                viewModel.joinLobby(code, name, claimPersonId = personId)
+            },
+            onJoinAsNew = {
+                val code = pendingJoinCode!!
+                val name = joinMemberName.ifBlank { uiState.userProfile?.name ?: "Guest" }
+                pendingClaimSession = null
+                pendingJoinCode = null
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                Toast.makeText(context, "Joining as new member...", Toast.LENGTH_SHORT).show()
+                viewModel.joinLobby(code, name, claimPersonId = null)
             }
         )
     }
@@ -218,115 +280,39 @@ fun LobbyHubScreen(
                         icon = Icons.Default.QrCodeScanner,
                         iconColor = Color(0xFF10B981),
                         title = "Scan QR to Join Instantly",
-                        subtitle = "Scan host's QR code to enter the group directly",
-                        buttonText = "Scan QR Code",
+                        subtitle = "Point camera at host's QR code to enter ledger",
+                        buttonText = "Scan QR",
                         onClick = { showQrScanner = true }
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Option 3 Button Card: Join via 6-digit Code
+                    // Option 3 Button Card: Join via Code
                     ExecutiveLobbyOptionCard(
                         icon = Icons.Default.Key,
                         iconColor = Color(0xFF0284C7),
-                        title = "Enter 6-Digit Code",
-                        subtitle = "Type in the trip lobby code manually",
+                        title = "Join with 6-Digit Code",
+                        subtitle = "Enter room code shared by your friend or host",
                         buttonText = "Enter Code",
                         onClick = { activeAction = LobbyAction.JOIN }
                     )
 
-                    // SECTION 3: PREVIOUSLY SAVED GROUPS & PRESETS
-                    if (uiState.savedGroups.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(28.dp))
 
-                        Text(
-                            text = "Saved Groups",
-                            fontFamily = PlusJakartaSansFontFamily,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Quick-start a trip ledger with existing group members.",
-                            fontFamily = PlusJakartaSansFontFamily,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        uiState.savedGroups.forEach { group ->
-                            Card(
-                                shape = RoundedCornerShape(14.dp),
-                                colors = appCardColors(),
-                                border = appCardBorder(),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 10.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(14.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = group.name,
-                                            fontFamily = PlusJakartaSansFontFamily,
-                                            fontSize = 15.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = "${group.members.size} members: ${group.members.joinToString { it.name }}",
-                                            fontFamily = PlusJakartaSansFontFamily,
-                                            fontSize = 12.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    Button(
-                                        onClick = {
-                                            createTripName = group.name
-                                            selectedSavedGroup = group
-                                            activeAction = LobbyAction.CREATE
-                                        },
-                                        shape = RoundedCornerShape(10.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                                    ) {
-                                        Text("Start", fontFamily = PlusJakartaSansFontFamily, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // SECTION 4: RECENT & SAVED LOBBIES HISTORY
+                    // SAVED / RECENT SESSIONS SECTION
                     if (uiState.savedLobbies.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(24.dp))
-
                         Text(
-                            text = "Recent Trip Ledgers",
+                            text = "Recent Trip Ledgers (${uiState.savedLobbies.size})",
                             fontFamily = PlusJakartaSansFontFamily,
-                            fontSize = 16.sp,
+                            fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onBackground
                         )
-
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         uiState.savedLobbies.forEach { session ->
                             Card(
-                                shape = RoundedCornerShape(14.dp),
+                                shape = RoundedCornerShape(16.dp),
                                 colors = appCardColors(),
                                 border = appCardBorder(),
                                 modifier = Modifier
@@ -455,7 +441,8 @@ fun LobbyHubScreen(
                             OutlinedTextField(
                                 value = createTripName,
                                 onValueChange = { createTripName = it },
-                                label = { Text("Trip Title (e.g. Goa Vacation)") },
+                                label = { Text("Trip / Event Name") },
+                                placeholder = { Text("e.g. Goa Vacation, Flat Spends") },
                                 singleLine = true,
                                 shape = RoundedCornerShape(12.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -471,7 +458,7 @@ fun LobbyHubScreen(
                             OutlinedTextField(
                                 value = createHostName,
                                 onValueChange = { createHostName = it },
-                                label = { Text("Your Name (Host / Creator)") },
+                                label = { Text("Your Name (Host)") },
                                 singleLine = true,
                                 shape = RoundedCornerShape(12.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -482,33 +469,28 @@ fun LobbyHubScreen(
                                 modifier = Modifier.fillMaxWidth()
                             )
 
+                            // Quick Group Presets
                             if (uiState.savedGroups.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(16.dp))
-
+                                Spacer(modifier = Modifier.height(14.dp))
                                 Text(
-                                    text = "Import Saved Group:",
+                                    text = "Import Initial Members from Saved Group:",
                                     fontFamily = PlusJakartaSansFontFamily,
-                                    fontSize = 13.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-
                                 Spacer(modifier = Modifier.height(6.dp))
 
-                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
                                     uiState.savedGroups.forEach { group ->
-                                        val isSelected = selectedSavedGroup?.id == group.id
+                                        val isSelected = selectedSavedGroup == group
                                         FilterChip(
                                             selected = isSelected,
                                             onClick = {
-                                                if (isSelected) {
-                                                    selectedSavedGroup = null
-                                                } else {
-                                                    selectedSavedGroup = group
-                                                    if (createTripName.isBlank()) {
-                                                        createTripName = group.name
-                                                    }
-                                                }
+                                                selectedSavedGroup = if (isSelected) null else group
                                             },
                                             label = {
                                                 Text(
@@ -517,33 +499,20 @@ fun LobbyHubScreen(
                                                     fontSize = 12.sp
                                                 )
                                             },
-                                            leadingIcon = if (isSelected) {
-                                                { Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                                            } else null,
+                                            leadingIcon = {
+                                                Icon(
+                                                    imageVector = if (isSelected) Icons.Default.Check else Icons.Default.Groups,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                            },
+                                            shape = RoundedCornerShape(8.dp),
                                             colors = FilterChipDefaults.filterChipColors(
                                                 selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                                selectedLabelColor = MaterialTheme.colorScheme.primary
+                                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                                             )
                                         )
                                     }
-                                }
-                            }
-
-                            if (selectedSavedGroup != null) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Surface(
-                                    color = Color(0xFF10B981).copy(alpha = 0.12f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        text = "✓ Pre-loading ${selectedSavedGroup?.members?.size} members: ${selectedSavedGroup?.members?.joinToString { it.name }}",
-                                        fontFamily = PlusJakartaSansFontFamily,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = Color(0xFF10B981),
-                                        modifier = Modifier.padding(10.dp)
-                                    )
                                 }
                             }
 
@@ -710,10 +679,10 @@ fun LobbyHubScreen(
                             Button(
                                 onClick = {
                                     if (canJoin) {
-                                        viewModel.joinLobby(joinCode, joinMemberName)
+                                        startJoinFlow(joinCode, joinMemberName)
                                     }
                                 },
-                                enabled = canJoin,
+                                enabled = canJoin && !isCheckingLobby,
                                 shape = RoundedCornerShape(12.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
@@ -729,7 +698,7 @@ fun LobbyHubScreen(
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        text = "Join Room",
+                                        text = if (isCheckingLobby) "Checking Room..." else "Join Room",
                                         fontFamily = PlusJakartaSansFontFamily,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.SemiBold,
@@ -745,6 +714,177 @@ fun LobbyHubScreen(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun ClaimProfileDialog(
+    session: LobbySession,
+    joinMemberName: String,
+    onDismiss: () -> Unit,
+    onClaimMember: (String) -> Unit,
+    onJoinAsNew: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(22.dp),
+            colors = appCardColors(),
+            border = appCardBorder(),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(20.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF6366F1).copy(alpha = 0.15f))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.HowToReg,
+                        contentDescription = null,
+                        tint = Color(0xFF6366F1),
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "Claim Your Profile",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = "Were you already added to \"${session.name}\"? Select your name to take over and manage your expenses:",
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 14.dp)
+                )
+
+                // List of existing members to claim
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    session.members.forEach { member ->
+                        val paidCount = session.expenses.count { it.paidByPersonId == member.id }
+                        val splitCount = session.expenses.count { it.splitWithPersonIds.contains(member.id) }
+
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { onClaimMember(member.id) }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    MonogramAvatar(
+                                        name = member.name,
+                                        color = member.color,
+                                        size = 36.dp,
+                                        fontSize = 13.sp
+                                    )
+
+                                    Spacer(modifier = Modifier.width(10.dp))
+
+                                    Column {
+                                        Text(
+                                            text = member.name,
+                                            fontFamily = PlusJakartaSansFontFamily,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "$paidCount spends paid • in $splitCount splits",
+                                            fontFamily = PlusJakartaSansFontFamily,
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    color = Color(0xFF6366F1).copy(alpha = 0.15f),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = "Claim ➔",
+                                        fontFamily = PlusJakartaSansFontFamily,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF6366F1),
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Option: Join as New Member
+                OutlinedButton(
+                    onClick = onJoinAsNew,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PersonAdd,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "I'm not listed (Join as '$joinMemberName')",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                TextButton(onClick = onDismiss) {
+                    Text(
+                        text = "Cancel",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }

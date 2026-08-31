@@ -976,8 +976,22 @@ class SplitterViewModel : ViewModel() {
         startCloudSync(code)
     }
 
-    fun joinLobby(lobbyCode: String, memberName: String) {
-        if (lobbyCode.isBlank() || memberName.isBlank()) return
+    fun fetchLobbyForJoin(lobbyCode: String, onResult: (LobbySession?) -> Unit) {
+        val code = extractLobbyCode(lobbyCode)
+        if (code.isBlank()) {
+            onResult(null)
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val session = supabaseLobbyService.fetchLobbySession(code) ?: _uiState.value.savedLobbies.find { it.code.equals(code, ignoreCase = true) }
+            withContext(Dispatchers.Main) {
+                onResult(session)
+            }
+        }
+    }
+
+    fun joinLobby(lobbyCode: String, memberName: String, claimPersonId: String? = null) {
+        if (lobbyCode.isBlank()) return
         val code = extractLobbyCode(lobbyCode)
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -989,33 +1003,61 @@ class SplitterViewModel : ViewModel() {
                 0xFF3B6470L, 0xFF825500L, 0xFF4A6363L, 0xFF6B5778L
             )
             val currentMembers = remoteSession?.members ?: existingSession?.members ?: _uiState.value.people
-            val existingMember = currentMembers.find { it.name.equals(memberName.trim(), ignoreCase = true) }
-            val isUser = profile != null && memberName.trim().equals(profile.name, ignoreCase = true)
-            val newMember = existingMember ?: Person(
-                id = if (isUser) profile.id else UUID.randomUUID().toString(),
-                name = memberName.trim(),
-                color = if (isUser) profile.color else colors[currentMembers.size % colors.size],
-                emoji = if (isUser) profile.emoji else "😎",
-                phoneNumber = if (isUser) profile.phoneNumber else null,
-                upiId = if (isUser) profile.upiId else null,
-                isCurrentUser = isUser
-            )
-            val updatedMembers = if (existingMember != null) currentMembers else currentMembers + newMember
             
-            val joinActivity = com.example.splixter.data.TripActivity(
-                lobbyCode = code,
-                actorPersonId = newMember.id,
-                actorName = newMember.name,
-                actionType = "MEMBER_JOINED",
-                description = "${newMember.name} joined the trip"
-            )
+            val activeUser: Person
+            val updatedMembers: List<Person>
+            val joinActivity: com.example.splixter.data.TripActivity
+
+            if (claimPersonId != null) {
+                val existingTarget = currentMembers.find { it.id == claimPersonId }
+                val targetName = existingTarget?.name ?: memberName.trim()
+                activeUser = (existingTarget ?: Person(id = claimPersonId, name = targetName, color = colors[0])).copy(
+                    isCurrentUser = true,
+                    upiId = profile?.upiId ?: existingTarget?.upiId,
+                    phoneNumber = profile?.phoneNumber ?: existingTarget?.phoneNumber,
+                    emoji = profile?.emoji ?: existingTarget?.emoji ?: "😎",
+                    color = profile?.color ?: existingTarget?.color ?: colors[0]
+                )
+                updatedMembers = currentMembers.map { if (it.id == claimPersonId) activeUser else it.copy(isCurrentUser = false) }
+                joinActivity = com.example.splixter.data.TripActivity(
+                    lobbyCode = code,
+                    actorPersonId = activeUser.id,
+                    actorName = activeUser.name,
+                    actionType = "MEMBER_CLAIMED",
+                    description = "${profile?.name ?: memberName.trim()} joined and claimed profile '$targetName'"
+                )
+            } else {
+                val existingMember = currentMembers.find { it.name.equals(memberName.trim(), ignoreCase = true) }
+                val isUser = profile != null && memberName.trim().equals(profile.name, ignoreCase = true)
+                activeUser = existingMember?.copy(isCurrentUser = true) ?: Person(
+                    id = if (isUser) profile.id else UUID.randomUUID().toString(),
+                    name = memberName.trim(),
+                    color = if (isUser) profile.color else colors[currentMembers.size % colors.size],
+                    emoji = if (isUser) profile.emoji else "😎",
+                    phoneNumber = if (isUser) profile.phoneNumber else null,
+                    upiId = if (isUser) profile.upiId else null,
+                    isCurrentUser = true
+                )
+                updatedMembers = if (existingMember != null) {
+                    currentMembers.map { if (it.id == activeUser.id) activeUser else it.copy(isCurrentUser = false) }
+                } else {
+                    currentMembers.map { it.copy(isCurrentUser = false) } + activeUser
+                }
+                joinActivity = com.example.splixter.data.TripActivity(
+                    lobbyCode = code,
+                    actorPersonId = activeUser.id,
+                    actorName = activeUser.name,
+                    actionType = "MEMBER_JOINED",
+                    description = "${activeUser.name} joined the trip"
+                )
+            }
 
             val updatedActivities = listOf(joinActivity) + (remoteSession?.activities ?: existingSession?.activities ?: _uiState.value.tripActivities)
 
             val updatedSession = LobbySession(
                 code = code,
                 name = remoteSession?.name ?: existingSession?.name ?: if (_uiState.value.tripName.isBlank()) "Joined Trip" else _uiState.value.tripName,
-                hostPersonId = remoteSession?.hostPersonId ?: currentMembers.firstOrNull()?.id ?: newMember.id,
+                hostPersonId = remoteSession?.hostPersonId ?: currentMembers.firstOrNull()?.id ?: activeUser.id,
                 members = updatedMembers,
                 expenses = remoteSession?.expenses ?: existingSession?.expenses ?: _uiState.value.tripExpenses,
                 settlements = remoteSession?.settlements ?: existingSession?.settlements ?: _uiState.value.tripSettlements,
@@ -1025,7 +1067,7 @@ class SplitterViewModel : ViewModel() {
             updateState(immediate = true) { s ->
                 s.copy(
                     activeLobbyCode = code,
-                    currentUserId = newMember.id,
+                    currentUserId = activeUser.id,
                     tripName = updatedSession.name,
                     people = updatedMembers,
                     tripExpenses = updatedSession.expenses,
@@ -1037,7 +1079,7 @@ class SplitterViewModel : ViewModel() {
                 )
             }
             appStorage?.saveLobbies(_uiState.value.savedLobbies)
-            supabaseLobbyService.addMember(code, newMember)
+            supabaseLobbyService.addMember(code, activeUser)
             supabaseLobbyService.recordActivity(joinActivity)
             startCloudSync(code)
         }

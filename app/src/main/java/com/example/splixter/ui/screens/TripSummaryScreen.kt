@@ -377,6 +377,7 @@ fun TripSummaryScreen(
                             settlement = settlement,
                             currentUserId = currentUserId,
                             currentUserName = currentUserName,
+                            activeLobbyCode = uiState.activeLobbyCode,
                             tripName = uiState.tripName,
                             onRecordSettlement = {
                                 viewModel.recordSettlementPayment(settlement)
@@ -492,6 +493,7 @@ private fun SettlementCard(
     settlement: TripSettlement,
     currentUserId: String,
     currentUserName: String,
+    activeLobbyCode: String?,
     tripName: String,
     onRecordSettlement: () -> Unit
 ) {
@@ -776,24 +778,37 @@ private fun SettlementCard(
                         }
                     }
                     else -> {
-                        // 3rd party observer (neither owes nor is owed in this direct transfer)
-                        Surface(
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                        // 3rd party observer: Offer action to share App link and Group Code with the debtor
+                        OutlinedButton(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                val codeMsg = if (!activeLobbyCode.isNullOrBlank()) "\n2. Enter Group Code: $activeLobbyCode\n3. Select your name '${settlement.fromPerson.name}' to claim your expenses!" else ""
+                                val inviteMsg = "Hey ${settlement.fromPerson.name}! You have a pending settlement of ₹${String.format(Locale.US, "%.2f", settlement.amount)} to ${settlement.toPerson.name} for $tripName.\n\n📲 Join the group on Splixter app to view and settle:\n1. Download the latest Splixter build: https://github.com/urunkarpm/Splixter/releases/latest$codeMsg"
+                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                    putExtra(Intent.EXTRA_TEXT, inviteMsg)
+                                    type = "text/plain"
+                                }
+                                context.startActivity(Intent.createChooser(sendIntent, "Send App Link & Group Code to ${settlement.fromPerson.name}"))
+                            },
                             shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                             modifier = Modifier.weight(1f).height(38.dp)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center,
-                                modifier = Modifier.padding(horizontal = 8.dp)
-                            ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Share,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "Pending: ${settlement.fromPerson.name} ➔ ${settlement.toPerson.name}",
+                                    text = "Invite ${settlement.fromPerson.name}",
                                     fontFamily = PlusJakartaSansFontFamily,
                                     fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
